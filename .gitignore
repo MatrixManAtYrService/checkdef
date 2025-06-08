@@ -1,0 +1,25 @@
+# Nix build results
+result/
+result
+
+# Development environment
+.direnv/
+
+# macOS
+.DS_Store
+
+# Editor temporary files
+*~
+.#*
+\#*#
+
+# IDE files
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Cache directories that might be created by tools
+.cache/

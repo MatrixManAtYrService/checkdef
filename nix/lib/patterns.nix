@@ -1,0 +1,25 @@
+# Check patterns - imports all individual check definitions
+{ flake, inputs, ... }:
+
+pkgs:
+let
+  # Import all individual check definitions
+  checkModules = {
+    deadnix = (import ./deadnix.nix { inherit flake inputs; }) pkgs;
+    statix = (import ./statix.nix { inherit flake inputs; }) pkgs;
+    nixpkgs-fmt = (import ./nixpkgs-fmt.nix { inherit flake inputs; }) pkgs;
+    ruff-check = (import ./ruff-check.nix { inherit flake inputs; }) pkgs;
+    ruff-format = (import ./ruff-format.nix { inherit flake inputs; }) pkgs;
+    pyright = (import ./pyright.nix { inherit flake inputs; }) pkgs;
+    fawltydeps = (import ./fawltydeps.nix { inherit flake inputs; }) pkgs;
+    pytest-cached = (import ./pytest-cached.nix { inherit flake inputs; }) pkgs;
+    pdoc = (import ./pdoc.nix { inherit flake inputs; }) pkgs;
+  };
+
+  # Extract patterns for backward compatibility
+  patterns = builtins.mapAttrs (name: def: def.pattern) checkModules;
+
+in
+{
+  inherit patterns;
+}

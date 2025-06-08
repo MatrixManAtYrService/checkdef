@@ -1,5 +1,5 @@
 {
-  description = "Reusable development checks framework with Python runner and Nix linting";
+  description = "Reusable development checks framework with Nix-based patterns and shell script execution";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -8,5 +8,6 @@
 
   outputs = inputs: inputs.blueprint {
     inherit inputs;
+    prefix = "nix";
   };
 }
