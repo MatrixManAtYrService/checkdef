@@ -1,4 +1,4 @@
-# Core framework utilities - both makeCheckWithDeps and makeCheckScript
+# Core framework utilities - simplified based on actual usage
 { flake, inputs, ... }:
 
 pkgs:
@@ -13,47 +13,20 @@ let
 
   makeCheckWithDeps = args:
     let
-      # Extract arguments with defaults
+      # Extract required arguments
       name = args.name or (throw "makeCheckWithDeps: 'name' is required");
       description = args.description or name;
       script = args.script or (throw "makeCheckWithDeps: 'script' is required");
-      makes_changes = args.makes_changes or false;
-
-      # Dependencies can be specified multiple ways:
-      # 1. buildInputs (legacy, direct list)
-      # 2. dependencies (new, can be list or attrset)
-      # 3. projectDeps (attrset of named dependencies)
-      buildInputs = args.buildInputs or [ ];
+      
+      # Extract optional arguments with defaults  
       dependencies = args.dependencies or [ ];
-      projectDeps = args.projectDeps or { };
-
-      # Environment variables (without IN_NIX_BUILD since we're running directly)
       environment = defaultEnvironment // (args.environment or { });
 
-      # Resolve dependencies
-      resolvedDeps =
-        # Legacy buildInputs
-        buildInputs ++
-        # Direct dependencies list
-        (if lib.isList dependencies then dependencies else lib.attrValues dependencies) ++
-        # Project dependencies
-        (lib.attrValues projectDeps) ++
-        # Always include basic tools
-        (with pkgs; [ coreutils ]);
-
-      # Handle named dependency substitution in script
-      # Replace @depName@ with actual paths in the script
-      processedScript = lib.foldl'
-        (script: depName:
-          let depPkg = projectDeps.${depName}; in
-          builtins.replaceStrings [ "@${depName}@" ] [ "${depPkg}" ] script
-        )
-        script
-        (lib.attrNames projectDeps);
-
+      # Resolve dependencies - always a simple list plus basic tools
+      resolvedDeps = dependencies ++ (with pkgs; [ coreutils ]);
     in
     {
-      inherit name description makes_changes;
+      inherit name description;
       # Create a script that sets up the environment and runs the check
       scriptContent = ''
         echo "🔧 Running ${name}..."
@@ -65,13 +38,13 @@ let
         export PATH="${lib.concatStringsSep ":" (map (dep: "${dep}/bin") resolvedDeps)}:$PATH"
         
         # Run the actual check script
-        ${processedScript}
+        ${script}
       '';
     };
 
   # Create complete check script derivation
   makeCheckScript =
-    { name              # Script name (e.g., "htutil-checks-fast")
+    { name              # Script name (e.g., "htutil-checklist-fast")
     , suiteName         # Name for the check suite
     , scriptChecks ? { } # Script-based checks
     , derivationChecks ? { } # Derivation-based checks
