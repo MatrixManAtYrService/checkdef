@@ -27,12 +27,11 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = [ pythonEnv ];
+      commandBuilder = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""}";
       environment = { };
-      script = ''
-        echo "🔍 Running FawltyDeps dependency analysis..."
-        
+      scriptTemplate = command: ''        
         # Run fawltydeps with ignore flags, but don't fail the build
-        if fawltydeps ${ignoreFlags} 2>&1; then
+        if ${command} 2>&1; then
           echo "✅ FawltyDeps analysis completed successfully"
         else
           echo "⚠️  FawltyDeps found dependency issues (see above)"

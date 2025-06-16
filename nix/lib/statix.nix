@@ -21,9 +21,6 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ statix ];
-      script = ''
-        echo "🔍 Running statix for comprehensive static analysis..."
-        statix check .
-      '';
+      command = "statix check .";
     };
 }

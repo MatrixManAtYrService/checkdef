@@ -21,10 +21,10 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ ruff ];
+      command = "ruff check --fix";
       makes_changes = true;
-      script = ''
-        echo "🔧 Running ruff check --fix..."
-        ruff check --fix
+      scriptTemplate = command: ''
+        ${command}
         echo "All checks passed!"
       '';
     };

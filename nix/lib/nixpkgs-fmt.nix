@@ -21,10 +21,10 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ nixpkgs-fmt ];
+      command = "find . -name \"*.nix\" -not -path \"./.*\" -not -path \"./result*\" -exec nixpkgs-fmt {} \\;";
       makes_changes = true;
-      script = ''
-        echo "🔧 Formatting Nix files..."
-        find . -name "*.nix" -not -path "./.*" -not -path "./result*" -exec nixpkgs-fmt {} \;
+      scriptTemplate = command: ''
+        ${command}
         echo "Nix files formatted!"
       '';
     };

@@ -16,8 +16,29 @@ let
       # Extract required arguments
       name = args.name or (throw "makeCheckWithDeps: 'name' is required");
       description = args.description or name;
-      script = args.script or (throw "makeCheckWithDeps: 'script' is required");
-      
+
+      # New command system - either static command or command-builder
+      command = args.command or null;
+      commandBuilder = args.commandBuilder or null;
+
+      # Validate that exactly one of command or commandBuilder is provided
+      commandCount = (if command != null then 1 else 0) + (if commandBuilder != null then 1 else 0);
+      _commandCheck = if commandCount != 1 then throw "makeCheckWithDeps: exactly one of 'command' or 'commandBuilder' must be provided" else null;
+
+      # Build the actual command string
+      builtCommand = if command != null then command else commandBuilder;
+
+      # Handle script vs script-template
+      script = args.script or null;
+      scriptTemplate = args.scriptTemplate or (command: command); # Default to identity function
+
+      # Validate script arguments - now scriptTemplate always exists
+      scriptCount = (if script != null then 1 else 0);
+      _scriptCheck = if script != null && args ? scriptTemplate then throw "makeCheckWithDeps: cannot provide both 'script' and 'scriptTemplate'" else null;
+
+      # Build the actual script
+      builtScript = if script != null then script else (scriptTemplate builtCommand);
+
       # Extract optional arguments with defaults  
       dependencies = args.dependencies or [ ];
       environment = defaultEnvironment // (args.environment or { });
@@ -27,10 +48,9 @@ let
     in
     {
       inherit name description;
+      command = builtCommand; # Pass through the built command for display
       # Create a script that sets up the environment and runs the check
       scriptContent = ''
-        echo "🔧 Running ${name}..."
-        
         # Set up environment variables
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") environment)}
         
@@ -38,14 +58,14 @@ let
         export PATH="${lib.concatStringsSep ":" (map (dep: "${dep}/bin") resolvedDeps)}:$PATH"
         
         # Run the actual check script
-        ${script}
+        ${builtScript}
       '';
     };
 
   # Create complete check script derivation
   makeCheckScript =
     { name              # Script name (e.g., "htutil-checklist-fast")
-    , suiteName         # Name for the check suite
+    , suiteName ? name  # Name for the check suite (defaults to name)
     , scriptChecks ? { } # Script-based checks
     , derivationChecks ? { } # Derivation-based checks
     }:
@@ -57,6 +77,7 @@ let
             echo "================================================"
             echo "[${checkName}] ${check.description}"
             echo "================================================"
+            ${if check.command != null then ''echo "🔧 Running: ${check.command}"'' else ""}
           
             # Execute the check script
             ${check.scriptContent}
@@ -83,10 +104,6 @@ let
               buildScript = pkgs.writeShellScript "build-${checkName}" ''
                 set -euo pipefail
               
-                echo "================================================"
-                echo "[${checkName}] ${description}"
-                echo "================================================"
-              
                 # Create a temporary directory for the build result link
                 temp_dir=$(mktemp -d)
                 result_link="$temp_dir/check-result"
@@ -110,6 +127,11 @@ let
               '';
             in
             ''
+              echo "================================================"
+              echo "[${checkName}] ${description}"
+              echo "================================================"
+              echo "🔧 Running: nix build ${derivation}"
+              
               # Run the build script for ${checkName}
               ${buildScript}
             ''

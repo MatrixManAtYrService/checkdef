@@ -2,7 +2,7 @@
 { flake, inputs, ... }:
 
 # Return a function that takes pkgs and returns the lib modules
-pkgs: 
+pkgs:
 let
   # Import all individual check definitions
   checkModules = {
@@ -15,14 +15,15 @@ let
     fawltydeps = (import ./fawltydeps.nix { inherit flake inputs; }) pkgs;
     pytest-cached = (import ./pytest-cached.nix { inherit flake inputs; }) pkgs;
     pdoc = (import ./pdoc.nix { inherit flake inputs; }) pkgs;
+    trim-whitespace = (import ./trim-whitespace.nix { inherit flake inputs; }) pkgs;
   };
-  
+
   # Extract check functions directly
   checkFunctions = builtins.mapAttrs (name: def: def.pattern) checkModules;
 in
 {
   # Core framework functions and utilities  
   inherit (import ./utils.nix { inherit flake inputs; } pkgs) makeCheckWithDeps makeCheckScript;
-} 
-# Merge in all check functions at the top level
-// checkFunctions
+}
+  # Merge in all check functions at the top level
+  // checkFunctions

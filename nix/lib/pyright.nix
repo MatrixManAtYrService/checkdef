@@ -21,10 +21,7 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ pyright pythonEnv ];
+      command = "pyright .";
       environment = { };
-      script = ''
-        echo "🔍 Running pyright type checking..."
-        pyright .
-      '';
     };
 }

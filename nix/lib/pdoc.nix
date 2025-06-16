@@ -21,15 +21,14 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ pythonEnv ];
+      command = "pdoc -o ${outputDir} ${modulePath}";
       environment = { };
-      script = ''
-        echo "📚 Generating API documentation with pdoc..."
-        
+      scriptTemplate = command: ''        
         # Create output directory if it doesn't exist
         mkdir -p ${outputDir}
         
         # Generate documentation
-        pdoc -o ${outputDir} ${modulePath}
+        ${command}
         
         echo "✅ Documentation generated successfully in ${outputDir}/"
       '';

@@ -1,9 +1,11 @@
 # pytest-cached check definition - creates a derivation for caching
+# Debug version to troubleshoot file staging
 { flake, inputs, ... }:
 
 pkgs:
 let
   inherit (pkgs) lib;
+  globset = inputs.globset.lib;
 
   # Import makeCheckWithDeps directly to avoid circular dependency
   utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
@@ -12,13 +14,13 @@ in
 {
   meta = {
     requiredArgs = [ "src" "pythonEnv" ];
-    optionalArgs = [ "name" "description" "testConfig" "includePaths" "testDirs" "wheelPath" "wheelPathEnvVar" "extraDeps" ];
+    optionalArgs = [ "name" "description" "testConfig" "includePatterns" "testDirs" "wheelPath" "wheelPathEnvVar" "extraDeps" ];
     needsPythonEnv = true;
     makesChanges = false;
     isDerivedCheck = true;
   };
 
-  pattern = { src, pythonEnv, name ? "pytest-cached", description ? "Cached Python tests", testConfig ? { }, includePaths ? [ "src" "tests" "pyproject.toml" ], testDirs ? [ "tests" ], wheelPath ? null, wheelPathEnvVar ? "WHEEL_PATH", extraDeps ? [ ] }:
+  pattern = { src, pythonEnv, name ? "pytest-cached", description ? "Cached Python tests", testConfig ? { }, includePatterns ? [ "src/**" "tests/**" "pyproject.toml" ], testDirs ? [ "tests" ], wheelPath ? null, wheelPathEnvVar ? "WHEEL_PATH", extraDeps ? [ ] }:
     let
       defaultTestConfig = {
         baseDeps = [ ];
@@ -32,19 +34,10 @@ in
         then { "${wheelPathEnvVar}" = wheelPath; }
         else { };
 
-      # Copy only the specified paths to nix store for deterministic caching
-      srcForCache = lib.cleanSourceWith {
-        inherit src;
-        filter = path: _type:
-          let
-            relativePath = lib.removePrefix (toString src + "/") (toString path);
-          in
-          # Include only if the path starts with one of the specified include paths
-          builtins.any
-            (includePath:
-              lib.hasPrefix (includePath + "/") relativePath || relativePath == includePath
-            )
-            includePaths;
+      # Use globset to filter source files based on glob patterns
+      srcForCache = lib.fileset.toSource {
+        root = src;
+        fileset = globset.globs src includePatterns;
       };
     in
     # Create a proper derivation that runs pytest

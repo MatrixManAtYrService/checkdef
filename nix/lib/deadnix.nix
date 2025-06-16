@@ -21,13 +21,13 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ deadnix ];
-      script = ''
+      command = "deadnix <nix-files>";
+      scriptTemplate = command: ''
         nix_files=$(find . -name "*.nix" -not -path "./.*" -not -path "./result*" | sort)
         if [ -z "$nix_files" ]; then
           echo "No .nix files found to check"
           exit 0
         fi
-        echo "🔍 Running deadnix for unused code detection..."
         deadnix $nix_files
       '';
     };

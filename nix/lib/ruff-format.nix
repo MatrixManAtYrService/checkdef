@@ -21,10 +21,7 @@ in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ ruff ];
+      command = "ruff format";
       makes_changes = true;
-      script = ''
-        echo "🔧 Running ruff format..."
-        ruff format
-      '';
     };
 }
