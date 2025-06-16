@@ -6,6 +6,6 @@ pkgs: {
   # Core framework functions and utilities  
   inherit (import ./utils.nix { inherit flake inputs; } pkgs) makeCheckWithDeps makeCheckScript;
 
-  # Check patterns
-  inherit (import ./patterns.nix { inherit flake inputs; } pkgs) patterns;
+  # Check definitions (formerly patterns)
+  inherit (import ./checkdef.nix { inherit flake inputs; } pkgs) checkdef;
 }

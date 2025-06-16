@@ -1,5 +1,5 @@
-# Default package - runs the self-checks
+# Default package - runs the checklist
 { flake, inputs, pkgs, ... }:
 
-# Import the self-checks as the default package
-import ./self-checks.nix { inherit flake inputs pkgs; }
+# Import the checklist as the default package
+import ./checklist.nix { inherit flake inputs pkgs; }

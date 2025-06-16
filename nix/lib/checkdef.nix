@@ -1,4 +1,4 @@
-# Check patterns - imports all individual check definitions
+# Check definitions - imports all individual check definitions
 { flake, inputs, ... }:
 
 pkgs:
@@ -16,10 +16,10 @@ let
     pdoc = (import ./pdoc.nix { inherit flake inputs; }) pkgs;
   };
 
-  # Extract patterns for backward compatibility
-  patterns = builtins.mapAttrs (name: def: def.pattern) checkModules;
+  # Extract check definitions 
+  checkdef = builtins.mapAttrs (name: def: def.pattern) checkModules;
 
 in
 {
-  inherit patterns;
+  inherit checkdef;
 }
