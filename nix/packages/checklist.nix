@@ -5,19 +5,19 @@ let
   inherit (pkgs) lib;
 
   # Get the framework functions and check definitions from our lib  
-  checksLib = flake.lib pkgs;
-  inherit (checksLib) checkdef makeCheckScript;
+  checks = flake.lib pkgs;
+  inherit (checks) makeCheckScript;
 
   # Project source
   src = ../../.;
 
   # Build individual checks using check definitions
   scriptChecks = {
-    deadnix = checkdef.deadnix { inherit src; };
-    statix = checkdef.statix { inherit src; };
-    nixpkgs-fmt = checkdef.nixpkgs-fmt { inherit src; };
-    ruff-check = checkdef.ruff-check { inherit src; };
-    ruff-format = checkdef.ruff-format { inherit src; };
+    deadnix = checks.deadnix { inherit src; };
+    statix = checks.statix { inherit src; };
+    nixpkgs-fmt = checks.nixpkgs-fmt { inherit src; };
+    ruff-check = checks.ruff-check { inherit src; };
+    ruff-format = checks.ruff-format { inherit src; };
   };
 
 in
