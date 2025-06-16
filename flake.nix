@@ -1,5 +1,5 @@
 {
-  description = "Reusable development checks framework with Nix-based patterns and shell script execution";
+  description = "Reusable development check definitions with Nix-based execution framework";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
