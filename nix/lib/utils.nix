@@ -147,8 +147,7 @@ let
     pkgs.writeShellScriptBin name ''
       set -euo pipefail
       
-      echo "🚀 Starting ${suiteName}"
-      echo "================================================"
+      echo "🚀 running checklist: ${suiteName}"
       
       ${allCheckScripts}
       

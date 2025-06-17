@@ -23,9 +23,5 @@ in
       dependencies = with pkgs; [ ruff ];
       command = "ruff check --fix";
       makes_changes = true;
-      scriptTemplate = command: ''
-        ${command}
-        echo "All checks passed!"
-      '';
     };
 }
