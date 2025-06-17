@@ -14,13 +14,13 @@ in
 {
   meta = {
     requiredArgs = [ "src" "pythonEnv" ];
-    optionalArgs = [ "name" "description" "testConfig" "includePatterns" "testDirs" "wheelPath" "wheelPathEnvVar" "extraDeps" ];
+    optionalArgs = [ "name" "description" "testConfig" "includePatterns" "tests" "wheelPath" "wheelPathEnvVar" "extraDeps" ];
     needsPythonEnv = true;
     makesChanges = false;
     isDerivedCheck = true;
   };
 
-  pattern = { src, pythonEnv, name ? "pytest-cached", description ? "Cached Python tests", testConfig ? { }, includePatterns ? [ "src/**" "tests/**" "pyproject.toml" ], testDirs ? [ "tests" ], wheelPath ? null, wheelPathEnvVar ? "WHEEL_PATH", extraDeps ? [ ] }:
+  pattern = { src, pythonEnv, name ? "pytest-cached", description ? "Cached Python tests", testConfig ? { }, includePatterns ? [ "src/**" "tests/**" "pyproject.toml" ], tests ? [ "tests" ], wheelPath ? null, wheelPathEnvVar ? "WHEEL_PATH", extraDeps ? [ ] }:
     let
       defaultTestConfig = {
         baseDeps = [ ];
@@ -60,7 +60,7 @@ in
         
         # Run pytest and capture output
         set +e  # Don't exit on pytest failure, we want to parse results
-        pytest_output=$(pytest -v --tb=short ${builtins.concatStringsSep " " testDirs} 2>&1)
+        pytest_output=$(pytest -v --tb=short ${builtins.concatStringsSep " " tests} 2>&1)
         pytest_exit_code=$?
         set -e
         

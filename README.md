@@ -28,7 +28,7 @@ Add checkdef to your `flake.nix` and define checks directly in your packages:
             inherit src pythonEnv;
             name = "checklist-unit";
             includePatterns = [ "src/mymodule/**" "tests/unit/**" "pyproject.toml" ];
-            testDirs = [ "tests/unit" ];
+            tests = [ "tests/unit" ];
           };
 
           checklist-all = checks.runner {
@@ -75,13 +75,13 @@ Control when checks rebuild by specifying `includePatterns` with glob patterns:
 # Only rebuild when frontend code changes  
 frontendTests = checks.pytest-cached {
   includePatterns = [ "frontend/**" "tests/frontend/**" "pyproject.toml" ];
-  testDirs = [ "tests/frontend" ];
+  tests = [ "tests/frontend" ];
 };
 
 # Only rebuild when backend code changes
 backendTests = checks.pytest-cached {
   includePatterns = [ "backend/**" "tests/backend/**" "pyproject.toml" ];
-  testDirs = [ "tests/backend" ];
+  tests = [ "tests/backend" ];
 };
 ```
 
