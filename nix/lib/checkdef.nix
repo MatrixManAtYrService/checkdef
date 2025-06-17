@@ -1,23 +1,23 @@
 # Check definitions - imports all individual check definitions
-{ flake, inputs, ... }:
+_:
 
 pkgs:
 let
   # Import all individual check definitions
   checkModules = {
-    deadnix = (import ./deadnix.nix { inherit flake inputs; }) pkgs;
-    statix = (import ./statix.nix { inherit flake inputs; }) pkgs;
-    nixpkgs-fmt = (import ./nixpkgs-fmt.nix { inherit flake inputs; }) pkgs;
-    ruff-check = (import ./ruff-check.nix { inherit flake inputs; }) pkgs;
-    ruff-format = (import ./ruff-format.nix { inherit flake inputs; }) pkgs;
-    pyright = (import ./pyright.nix { inherit flake inputs; }) pkgs;
-    fawltydeps = (import ./fawltydeps.nix { inherit flake inputs; }) pkgs;
-    pytest-cached = (import ./pytest-cached.nix { inherit flake inputs; }) pkgs;
-    pdoc = (import ./pdoc.nix { inherit flake inputs; }) pkgs;
+    deadnix = (import ./deadnix.nix) pkgs;
+    statix = (import ./statix.nix) pkgs;
+    nixpkgs-fmt = (import ./nixpkgs-fmt.nix) pkgs;
+    ruff-check = (import ./ruff-check.nix) pkgs;
+    ruff-format = (import ./ruff-format.nix) pkgs;
+    pyright = (import ./pyright.nix) pkgs;
+    fawltydeps = (import ./fawltydeps.nix) pkgs;
+    pytest-cached = (import ./pytest-cached.nix) pkgs;
+    pdoc = (import ./pdoc.nix) pkgs;
   };
 
   # Extract check definitions 
-  checkdef = builtins.mapAttrs (name: def: def.pattern) checkModules;
+  checkdef = builtins.mapAttrs (_: def: def.pattern) checkModules;
 
 in
 {

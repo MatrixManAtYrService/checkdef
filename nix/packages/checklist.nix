@@ -1,29 +1,34 @@
 # Self-checks checklist for the checks framework
-{ flake, inputs, pkgs, pname ? "checklist", ... }:
+{ inputs, pkgs, pname ? "checklist", ... }:
 
 let
-  inherit (pkgs) lib;
+  # Use nixpkgs input to get a separate pkgs instance
+  inherit (inputs) nixpkgs;
+  selfCheckPkgs = nixpkgs.legacyPackages.${pkgs.system};
 
-  # Get the framework functions and check definitions from our lib  
-  checks = flake.lib pkgs;
-  inherit (checks) runner;
+  # Import check definitions directly to avoid circular dependency
+  utils = (import ../lib/utils.nix) selfCheckPkgs;
+  deadnixCheck = (import ../lib/deadnix.nix) selfCheckPkgs;
+  statixCheck = (import ../lib/statix.nix) selfCheckPkgs;
+  nixpkgsFmtCheck = (import ../lib/nixpkgs-fmt.nix) selfCheckPkgs;
+
+  inherit (utils) runner;
 
   # Project source
   src = ../../.;
 
   # Build individual checks using check definitions
+  # Only include Nix-related checks since this is a Nix-only project
   scriptChecks = {
-    deadnix = checks.deadnix { inherit src; };
-    statix = checks.statix { inherit src; };
-    nixpkgs-fmt = checks.nixpkgs-fmt { inherit src; };
-    ruff-check = checks.ruff-check { inherit src; };
-    ruff-format = checks.ruff-format { inherit src; };
+    deadnix = deadnixCheck.pattern { inherit src; };
+    statix = statixCheck.pattern { inherit src; };
+    nixpkgs-fmt = nixpkgsFmtCheck.pattern { inherit src; };
   };
 
 in
 # Use runner to create the combined check script
 runner {
   name = pname;
-  suiteName = "Self Checks";
+  suiteName = "Checkdef Self-Checks";
   inherit scriptChecks;
 }

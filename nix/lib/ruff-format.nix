@@ -1,12 +1,9 @@
-# ruff-format definition  
-{ flake, inputs, ... }:
+# ruff-format check definition
 
 pkgs:
 let
-  inherit (pkgs) lib;
-
   # Import makeCheckWithDeps directly to avoid circular dependency
-  utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
+  utils = (import ./utils.nix) pkgs;
   inherit (utils) makeCheckWithDeps;
 in
 {
@@ -17,11 +14,11 @@ in
     makesChanges = true;
   };
 
-  pattern = { src, name ? "ruff-format", description ? "Python formatting with ruff" }:
+  pattern = { name ? "ruff-format", description ? "Python formatting with ruff", src, ... }:
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ ruff ];
       command = "ruff format";
-      makes_changes = true;
+      verboseCommand = "ruff format --verbose";
     };
 }

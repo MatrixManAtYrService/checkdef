@@ -1,12 +1,9 @@
 # pyright check definition
-{ flake, inputs, ... }:
 
 pkgs:
 let
-  inherit (pkgs) lib;
-
   # Import makeCheckWithDeps directly to avoid circular dependency
-  utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
+  utils = (import ./utils.nix) pkgs;
   inherit (utils) makeCheckWithDeps;
 in
 {
@@ -17,11 +14,11 @@ in
     makesChanges = false;
   };
 
-  pattern = { src, pythonEnv, name ? "pyright", description ? "Python type checking with pyright" }:
+  pattern = { pythonEnv, name ? "pyright", description ? "Python type checking with pyright", src, ... }:
     makeCheckWithDeps {
       inherit name description src;
-      dependencies = with pkgs; [ pyright pythonEnv ];
-      command = "pyright .";
-      environment = { };
+      dependencies = [ pythonEnv ];
+      command = "pyright";
+      verboseCommand = "pyright --verbose";
     };
 }

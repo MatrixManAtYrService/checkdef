@@ -2,6 +2,8 @@
 
 A Nix-based framework for running development checks with beautiful output and intelligent caching.
 
+Checks are defined as Nix derivations or shell scripts and aggregated into checklists using a `runner`. This allows for a consistent and easy-to-use interface for developers.
+
 ## Quick Start
 
 Add checkdef to your `flake.nix` and define checks directly in your packages:
@@ -22,9 +24,28 @@ Add checkdef to your `flake.nix` and define checks directly in your packages:
           pkgs = nixpkgs.legacyPackages.${system};
           checks = checkdef.lib pkgs;
           src = ./.;
-          # pythonEnv = ...; # your Python environment
+          pythonEnv = ...; # your Python environment
+          pytest-unit = checks.pytest-cached {
+            inherit src pythonEnv;
+            name = "pytest-unit";
+            includePatterns = [ "src/mymodule/**" "tests/unit/**"];
+            tests = [ "tests/unit" ];
+          };
+          pytest-integration = checks.pytest-cached {
+            inherit src pythonEnv;
+            name = "pytest-unit";
+            includePatterns = [ "src/mymodule/**" "tests/unit/**"];
+            tests = [ "tests/unit" ];
+          };
+          Checks = {
+            ruffCheck = checks.ruff-check { inherit src; };
+            ruffFormat = checks.ruff-format { inherit src; };
+          };
+
         in {
-          checklist-unit = checks.pytest-cached {
+          checklist-linters = checks.runner {
+            name = "checklist-linters";
+
             inherit src pythonEnv;
             name = "checklist-unit";
             includePatterns = [ "src/mymodule/**" "tests/unit/**" "pyproject.toml" ];
@@ -49,11 +70,12 @@ Add checkdef to your `flake.nix` and define checks directly in your packages:
 }
 ```
 
-Run with:
+Run checklists with:
 ```bash
-nix run .#checklist-all     # Run all checks
-nix run .#checklist-unit    # Run just unit tests
+nix run .#checklist-all
 ```
+
+Checklists can be composed of other checklists, so you can create granular sets of checks for different purposes (e.g., `nix run .#linters`, `nix run .#python-tests`).
 
 ## scriptChecks vs derivationChecks
 

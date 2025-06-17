@@ -1,0 +1,33 @@
+# deadnix check definition
+
+pkgs:
+let
+  inherit (pkgs) lib;
+
+  # Import makeCheckWithDeps directly to avoid circular dependency
+  utils = (import ./utils.nix) pkgs;
+  inherit (utils) makeCheckWithDeps;
+in
+{
+  meta = {
+    requiredArgs = [ "src" ];
+    optionalArgs = [ "name" "description" ];
+    needsPythonEnv = false;
+    makesChanges = false;
+  };
+
+  pattern = { src, name ? "deadnix", description ? "Dead Nix code detection" }:
+    makeCheckWithDeps {
+      inherit name description src;
+      dependencies = with pkgs; [ deadnix ];
+      commandBuilder = { ... }: ""; # Command is handled in scriptTemplate
+      scriptTemplate = command: ''
+        nix_files=$(find . -name "*.nix" -not -path "./.*" -not -path "./result*" | sort)
+        if [ -z "$nix_files" ]; then
+          echo "No .nix files found to check"
+          exit 0
+        fi
+        deadnix $nix_files
+      '';
+    };
+}

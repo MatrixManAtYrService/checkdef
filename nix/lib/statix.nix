@@ -1,12 +1,9 @@
 # statix check definition
-{ flake, inputs, ... }:
 
 pkgs:
 let
-  inherit (pkgs) lib;
-
   # Import makeCheckWithDeps directly to avoid circular dependency
-  utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
+  utils = (import ./utils.nix) pkgs;
   inherit (utils) makeCheckWithDeps;
 in
 {

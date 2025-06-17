@@ -1,12 +1,9 @@
 # deadnix check definition
-{ flake, inputs, ... }:
 
 pkgs:
 let
-  inherit (pkgs) lib;
-
   # Import makeCheckWithDeps directly to avoid circular dependency
-  utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
+  utils = (import ./utils.nix) pkgs;
   inherit (utils) makeCheckWithDeps;
 in
 {
@@ -17,18 +14,11 @@ in
     makesChanges = false;
   };
 
-  pattern = { src, name ? "deadnix", description ? "Dead Nix code detection" }:
+  pattern = { src, name ? "deadnix", description ? "Nix dead code analysis" }:
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ deadnix ];
-      command = "deadnix <nix-files>";
-      scriptTemplate = command: ''
-        nix_files=$(find . -name "*.nix" -not -path "./.*" -not -path "./result*" | sort)
-        if [ -z "$nix_files" ]; then
-          echo "No .nix files found to check"
-          exit 0
-        fi
-        deadnix $nix_files
-      '';
+      command = "deadnix -q .";
+      verboseCommand = "deadnix .";
     };
 }

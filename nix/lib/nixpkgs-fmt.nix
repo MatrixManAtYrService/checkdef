@@ -1,12 +1,9 @@
 # nixpkgs-fmt check definition
-{ flake, inputs, ... }:
 
 pkgs:
 let
-  inherit (pkgs) lib;
-
   # Import makeCheckWithDeps directly to avoid circular dependency
-  utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
+  utils = (import ./utils.nix) pkgs;
   inherit (utils) makeCheckWithDeps;
 in
 {
@@ -22,10 +19,5 @@ in
       inherit name description src;
       dependencies = with pkgs; [ nixpkgs-fmt ];
       command = "find . -name \"*.nix\" -not -path \"./.*\" -not -path \"./result*\" -exec nixpkgs-fmt {} \\;";
-      makes_changes = true;
-      scriptTemplate = command: ''
-        ${command}
-        echo "Nix files formatted!"
-      '';
     };
 }

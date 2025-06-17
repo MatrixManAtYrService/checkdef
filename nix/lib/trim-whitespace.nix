@@ -1,45 +1,45 @@
 # trim-whitespace check definition
-{ flake, inputs, ... }:
 
 pkgs:
 let
-  inherit (pkgs) lib;
-
   # Import makeCheckWithDeps directly to avoid circular dependency
-  utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
+  utils = (import ./utils.nix) pkgs;
   inherit (utils) makeCheckWithDeps;
 in
 {
   meta = {
     requiredArgs = [ "src" ];
-    optionalArgs = [ "name" "description" "filePattern" "exclude" ];
+    optionalArgs = [ "name" "description" "filePatterns" "exclude" ];
     needsPythonEnv = false;
     makesChanges = true;
   };
 
-  pattern = { src, name ? "trim-whitespace", description ? "Remove trailing whitespace", filePatterns ? [ "*" ], exclude ? [ ".git" "node_modules" "result" ".direnv" ] }:
+  pattern = { name ? "trim-whitespace", description ? "Remove trailing whitespace", filePatterns ? [ "*" ], exclude ? [ ".git" "node_modules" "result" ".direnv" ], src, ... }:
     let
-      excludeArgs = lib.concatStringsSep " " (map (dir: "-not -path './${dir}/*'") exclude);
-      # Generate find conditions for multiple patterns
-      patternArgs = lib.concatStringsSep " -o " (map (pattern: "-name '${pattern}'") filePatterns);
+      # Build pattern arguments for find command
+      patternArgs = builtins.concatStringsSep " -o " (map (pat: "-name \"${pat}\"") filePatterns);
+      excludeArgs = builtins.concatStringsSep " " (map (dir: "-not -path \"./${dir}*\"") exclude);
       findCommand = "find . \\( ${patternArgs} \\) -type f ${excludeArgs}";
     in
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ findutils gnused ];
-      command = "${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +";
-      makes_changes = true;
-      scriptTemplate = command: ''
-        # Find files and remove trailing whitespace
-        files_found=$(${findCommand} | wc -l)
-        if [ "$files_found" -eq 0 ]; then
-          echo "No files found matching patterns: ${lib.concatStringsSep ", " filePatterns}"
-          exit 0
-        fi
+      command = ''
+        echo "Trimming trailing whitespace from files..."
+        ${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +
+        echo "✅ Trailing whitespace trimmed"
+      '';
+      verboseCommand = ''
+        echo "🔧 Finding files matching patterns: ${toString filePatterns}"
+        echo "🔧 Excluding directories: ${toString exclude}"
+        echo "🔧 Find command: ${findCommand}"
         
-        echo "Processing $files_found files..."
-        ${command}
-        echo "Trailing whitespace removed from all matching files"
+        file_count=$(${findCommand} | wc -l)
+        echo "📁 Processing $file_count files..."
+        
+        ${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +
+        
+        echo "✅ Trailing whitespace trimmed from $file_count files"
       '';
     };
 }

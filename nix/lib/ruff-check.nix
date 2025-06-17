@@ -1,12 +1,9 @@
-# ruff-check definition
-{ flake, inputs, ... }:
+# ruff-check check definition
 
 pkgs:
 let
-  inherit (pkgs) lib;
-
   # Import makeCheckWithDeps directly to avoid circular dependency
-  utils = (import ./utils.nix { inherit flake inputs; }) pkgs;
+  utils = (import ./utils.nix) pkgs;
   inherit (utils) makeCheckWithDeps;
 in
 {
@@ -17,11 +14,11 @@ in
     makesChanges = true;
   };
 
-  pattern = { src, name ? "ruff-check", description ? "Python linting with ruff" }:
+  pattern = { name ? "ruff-check", description ? "Python linting with ruff", src, ... }:
     makeCheckWithDeps {
       inherit name description src;
       dependencies = with pkgs; [ ruff ];
       command = "ruff check --fix";
-      makes_changes = true;
+      verboseCommand = "ruff check --fix --verbose";
     };
 }
