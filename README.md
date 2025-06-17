@@ -11,7 +11,6 @@ Add checkdef to your `flake.nix` and define checks directly in your packages:
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     checkdef.url = "path:/path/to/checkdef";
-    # ... your other inputs
   };
 
   outputs = { self, nixpkgs, checkdef, ... }:
@@ -25,7 +24,6 @@ Add checkdef to your `flake.nix` and define checks directly in your packages:
           src = ./.;
           # pythonEnv = ...; # your Python environment
         in {
-          # Individual cached test suites
           checklist-unit = checks.pytest-cached {
             inherit src pythonEnv;
             name = "checklist-unit";
@@ -33,8 +31,7 @@ Add checkdef to your `flake.nix` and define checks directly in your packages:
             testDirs = [ "tests/unit" ];
           };
 
-          # Combined check script  
-          checklist-all = checks.makeCheckScript {
+          checklist-all = checks.runner {
             name = "checklist-all";
             suiteName = "All Checks";
             scriptChecks = {

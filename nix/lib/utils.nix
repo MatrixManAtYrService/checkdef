@@ -63,7 +63,7 @@ let
     };
 
   # Create complete check script derivation
-  makeCheckScript =
+  runner =
     { name              # Script name (e.g., "htutil-checklist-fast")
     , suiteName ? name  # Name for the check suite (defaults to name)
     , scriptChecks ? { } # Script-based checks
@@ -158,5 +158,5 @@ let
 
 in
 {
-  inherit makeCheckWithDeps makeCheckScript;
+  inherit makeCheckWithDeps runner;
 }

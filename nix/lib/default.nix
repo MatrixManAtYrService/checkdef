@@ -23,7 +23,5 @@ let
 in
 {
   # Core framework functions and utilities  
-  inherit (import ./utils.nix { inherit flake inputs; } pkgs) makeCheckWithDeps makeCheckScript;
-}
-  # Merge in all check functions at the top level
-  // checkFunctions
+  inherit (import ./utils.nix { inherit flake inputs; } pkgs) makeCheckWithDeps runner;
+} // checkFunctions  # Merge in all check functions at the top level

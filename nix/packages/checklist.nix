@@ -6,7 +6,7 @@ let
 
   # Get the framework functions and check definitions from our lib  
   checks = flake.lib pkgs;
-  inherit (checks) makeCheckScript;
+  inherit (checks) runner;
 
   # Project source
   src = ../../.;
@@ -21,8 +21,8 @@ let
   };
 
 in
-# Use makeCheckScript to create the combined check script
-makeCheckScript {
+# Use runner to create the combined check script
+runner {
   name = pname;
   suiteName = "Self Checks";
   inherit scriptChecks;
