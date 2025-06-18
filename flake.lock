@@ -22,11 +22,11 @@
     "checkdef-demo": {
       "flake": false,
       "locked": {
-        "lastModified": 1750270820,
-        "narHash": "sha256-ovJOafx5medjg/RzjX86I9BD7FT0FeWX0D9oBvEegpo=",
+        "lastModified": 1750283931,
+        "narHash": "sha256-h5gxRp7W0WooIkbBUOVwajozfQ6ivf1ym7wf0wMLKmI=",
         "owner": "MatrixManAtYrService",
         "repo": "checkdef-demo",
-        "rev": "8f919a4f3a1d4a4739e2993bfd90cad8acd748c4",
+        "rev": "7b0f26b3f3fd41f890a79752ec7f1a1e38075e9c",
         "type": "github"
       },
       "original": {

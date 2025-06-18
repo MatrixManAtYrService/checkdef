@@ -162,17 +162,17 @@ let
                 mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
                 
                 # Create a hash of the derivation path for the cache key
-                derivation_hash=$(echo "$target_derivation" | sha256sum | cut -d' ' -f1 | head -c 16)
+                derivation_hash=$(echo "$target_derivation" | ${pkgs.coreutils}/bin/sha256sum | ${pkgs.coreutils}/bin/cut -d' ' -f1 | ${pkgs.coreutils}/bin/head -c 16)
                 timing_cache_file="$cache_dir/timing-$derivation_hash.txt"
                 
                 # Determine if this was a cache hit (quick) or fresh build (slow)
-                duration_seconds=$(echo "$duration" | sed 's/s$//')
+                duration_seconds=$(echo "$duration" | ${pkgs.gnused}/bin/sed 's/s$//')
                 is_cached=false
                 
                 # Check if we have a previous timing record for comparison
                 if [ -f "$timing_cache_file" ]; then
                   previous_duration=$(cat "$timing_cache_file" 2>/dev/null || echo "0.1s")
-                  previous_seconds=$(echo "$previous_duration" | sed 's/s$//')
+                  previous_seconds=$(echo "$previous_duration" | ${pkgs.gnused}/bin/sed 's/s$//')
                   
                   # If current build is significantly faster than previous (less than 80%), it's cached
                   # OR if build took less than 1 second, it's likely cached
