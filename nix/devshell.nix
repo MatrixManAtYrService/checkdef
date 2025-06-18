@@ -2,8 +2,7 @@
 pkgs.mkShell {
   buildInputs = with pkgs; [
     uv
-    python3
-    pytest
+    (python3.withPackages (ps: with ps; [ pytest ]))
     nixpkgs-fmt
     deadnix
     statix
@@ -15,4 +14,4 @@ pkgs.mkShell {
     echo "🔧 checkdef development environment"
     echo "Available tools: uv, pytest, docker/podman"
   '';
-} 
+}

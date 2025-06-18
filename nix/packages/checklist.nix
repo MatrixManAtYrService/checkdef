@@ -1,5 +1,5 @@
 # Self-checks checklist for the checks framework
-{ pkgs, inputs ? {}, pname ? "checklist", ... }:
+{ pkgs, inputs ? { }, pname ? "checklist", ... }:
 
 let
 
@@ -19,7 +19,7 @@ let
   ruffFormatCheck = (import ../lib/ruff-format.nix) pkgs;
   pdocCheck = (import ../lib/pdoc.nix) pkgs;
   fawltydepsCheck = (import ../lib/fawltydeps.nix) pkgs;
-  
+
   # integration testing
   pytestIntegrationCheck = (import ../lib/pytest-integration.nix) pkgs;
 

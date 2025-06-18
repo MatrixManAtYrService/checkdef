@@ -48,4 +48,4 @@ pytest tests/test_cache_behavior.py -v
 
 The tests validate these timing relationships:
 - `uncached_time > partially_cached_time > fully_cached_time`
-- Changes to module A don't invalidate module B's cache 
+- Changes to module A don't invalidate module B's cache
