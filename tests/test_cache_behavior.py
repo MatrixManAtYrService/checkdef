@@ -95,24 +95,44 @@ class CheckdefTestContainer:
         image_hash = None
         build_output = result.stdout + result.stderr
         
+        # Debug: show actual build output to understand the format
+        print(f"🔍 Build output sample: {build_output[-500:]}")  # Last 500 chars
+        
         # Look for image hash in different formats
-        # New buildkit format: "writing image sha256:abc123..."
-        hash_match = re.search(r'writing image sha256:([a-f0-9]+)', build_output)
-        if hash_match:
-            image_hash = f"sha256:{hash_match.group(1)}"
-        else:
-            # Old format: "Successfully built abc123"
-            hash_match = re.search(r'Successfully built ([a-f0-9]+)', build_output)
+        patterns = [
+            # New buildkit format variations
+            r'writing image sha256:([a-f0-9]{64})',
+            r'=> => writing image sha256:([a-f0-9]{64})',
+            # Old format
+            r'Successfully built ([a-f0-9]{12})',
+            # Alternative patterns
+            r'sha256:([a-f0-9]{64})',
+        ]
+        
+        for pattern in patterns:
+            hash_match = re.search(pattern, build_output)
             if hash_match:
-                image_hash = hash_match.group(1)
+                if len(hash_match.group(1)) == 64:
+                    image_hash = f"sha256:{hash_match.group(1)}"
+                else:
+                    image_hash = hash_match.group(1)
+                print(f"✅ Found image hash using pattern '{pattern}': {image_hash}")
+                break
         
         if not image_hash:
-            # Fallback to tag if we can't extract hash
+            # Try to get the image ID directly after build
+            list_cmd = [self.container_tool, "images", "-q", image_tag]
+            list_result = subprocess.run(list_cmd, capture_output=True, text=True)
+            if list_result.returncode == 0 and list_result.stdout.strip():
+                image_hash = list_result.stdout.strip()
+                print(f"✅ Retrieved image hash from docker images: {image_hash}")
+        
+        if not image_hash:
+            # Final fallback to tag
             print("⚠️  Could not extract image hash, falling back to tag")
             image_reference = image_tag
         else:
             image_reference = image_hash
-            print(f"✅ Built image with hash: {image_hash}")
             
         # Start container using image hash or tag
         run_cmd = [
