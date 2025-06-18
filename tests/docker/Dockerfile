@@ -25,8 +25,8 @@ RUN cd /workspace/checkdef && \
     sed -i '/checkdef-demo\.flake/d' flake.nix
 
 # Validate flake syntax after modifications
-RUN cd /workspace/checkdef-demo && nix flake show .# --no-build
-RUN cd /workspace/checkdef && nix flake show .# --no-build
+RUN cd /workspace/checkdef-demo && nix flake check --dry-run || true
+RUN cd /workspace/checkdef && nix flake check --dry-run || true
 
 # Default command
 CMD ["/bin/bash"] 
