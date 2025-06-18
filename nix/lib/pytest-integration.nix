@@ -12,7 +12,7 @@ let
 
   pattern = { src, pythonEnv ? pkgs.python3, checkdefDemoPath ? null, ... }:
     let
-      utils = (import ../utils.nix) pkgs;
+      utils = (import ./utils.nix) pkgs;
 
       checkdefDemoEnvPath = 
         if checkdefDemoPath != null 
