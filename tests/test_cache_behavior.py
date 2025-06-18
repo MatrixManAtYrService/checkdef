@@ -85,10 +85,24 @@ class CheckdefTestContainer:
         ]
         
         print(f"🐳 Building Docker image: {image_tag}")
+        print(f"Build command: {' '.join(build_cmd)}")
         result = subprocess.run(build_cmd, capture_output=True, text=True)
+        
+        print(f"Build exit code: {result.returncode}")
+        if result.stdout:
+            print(f"Build stdout: {result.stdout}")
+        if result.stderr:
+            print(f"Build stderr: {result.stderr}")
         
         if result.returncode != 0:
             pytest.fail(f"Failed to build Docker image {image_tag}: {result.stderr}")
+            
+        # Verify the image was created
+        verify_cmd = [self.container_tool, "images", image_tag]
+        verify_result = subprocess.run(verify_cmd, capture_output=True, text=True)
+        print(f"Image verification: {verify_result.stdout}")
+        if image_tag not in verify_result.stdout:
+            pytest.fail(f"Docker image {image_tag} was not created successfully")
             
         # Start container
         run_cmd = [
