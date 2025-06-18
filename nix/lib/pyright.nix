@@ -14,11 +14,11 @@ in
     makesChanges = false;
   };
 
-  pattern = { pythonEnv, name ? "pyright", description ? "Python type checking with pyright", src, ... }:
+  pattern = { src, pythonEnv, name ? "pyright", description ? "Python type checking with pyright" }:
     makeCheckWithDeps {
-      inherit name description src;
+      inherit name description;
       dependencies = [ pythonEnv ];
       command = "pyright";
-      verboseCommand = "pyright --verbose";
+      verboseCommand = "pyright";
     };
 }

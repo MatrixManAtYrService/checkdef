@@ -36,6 +36,7 @@ let
 
         # Run the appropriate command based on verbose mode
         if [ "$verbose" = "true" ]; then
+          echo "🔧 Running: ${lib.escapeShellArg verboseCommand}"
           ${verboseCommand}
         else
           ${command}

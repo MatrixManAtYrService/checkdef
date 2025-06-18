@@ -16,13 +16,16 @@ in
 
   pattern = { src, pythonEnv, name ? "fawltydeps", description ? "Python dependency analysis with FawltyDeps", ignoreUndeclared ? [ ] }:
     let
+      # Automatically ignore fawltydeps itself since it's never imported by analyzed code
+      allIgnoredDeps = ignoreUndeclared ++ [ "fawltydeps" ];
+
       ignoreFlags =
-        if ignoreUndeclared != [ ]
-        then builtins.concatStringsSep " " (map (dep: "--ignore-undeclared ${dep}") ignoreUndeclared)
+        if allIgnoredDeps != [ ]
+        then builtins.concatStringsSep " " (map (dep: "--ignore-unused ${dep}") allIgnoredDeps)
         else "";
 
       baseCommand = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""}";
-      verboseCmd = "fawltydeps -v${if ignoreFlags != "" then " " + ignoreFlags else ""}";
+      verboseCmd = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""} -v";
     in
     makeCheckWithDeps {
       inherit name description src;

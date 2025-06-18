@@ -29,11 +29,19 @@ in
     let
       defaultTestConfig = {
         baseDeps = [ ];
+        baseEnv = { };
         extraEnvVars = { };
         pytestArgs = [ ];
       };
 
       finalTestConfig = lib.recursiveUpdate defaultTestConfig testConfig;
+
+      # Merge baseEnv and extraEnvVars for all environment variables
+      allEnvVars = finalTestConfig.baseEnv // finalTestConfig.extraEnvVars;
+
+      # Separate PATH from other environment variables to handle it specially
+      pathAdditions = allEnvVars.PATH or "";
+      envVarsWithoutPath = builtins.removeAttrs allEnvVars [ "PATH" ];
 
       # Use globset to filter source files based on glob patterns
       srcForCache = lib.fileset.toSource {
@@ -54,6 +62,9 @@ in
           version = "1.0.0";
           src = srcForCache;
 
+          # Enable the check phase
+          doCheck = true;
+
           nativeBuildInputs = [ pythonEnv ] ++ extraDeps ++ finalTestConfig.baseDeps;
 
           # Set up environment variables
@@ -61,11 +72,16 @@ in
             runHook preBuild
 
             # Set up environment variables from testConfig
-            ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") finalTestConfig.extraEnvVars)}
+            ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") envVarsWithoutPath)}
 
             # Set wheel path if provided
             ${lib.optionalString (wheelPath != null) ''
               export ${wheelPathEnvVar}="${wheelPath}"
+            ''}
+
+            # Add PATH separately
+            ${lib.optionalString (pathAdditions != "") ''
+              export PATH="${pathAdditions}:$PATH"
             ''}
 
             runHook postBuild
@@ -78,11 +94,11 @@ in
 
             # Run the tests and capture results
             if pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} ${builtins.concatStringsSep " " finalTestConfig.pytestArgs}; then
-              test_result="PASSED"
               echo "✅ All tests passed!"
+              export PYTEST_RESULT="PASSED"
             else
-              test_result="FAILED"
               echo "❌ Some tests failed"
+              export PYTEST_RESULT="FAILED"
               exit 1
             fi
 
@@ -95,11 +111,7 @@ in
             mkdir -p $out
 
             # Create a summary file for the runner to read
-            if [ "$test_result" = "PASSED" ]; then
-              echo "PASSED" > $out/pytest_summary.txt
-            else
-              echo "FAILED" > $out/pytest_summary.txt
-            fi
+            echo "''${PYTEST_RESULT:-FAILED}" > $out/pytest_summary.txt
 
             # Store the command that was run for reference
             echo "pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} ${builtins.concatStringsSep " " finalTestConfig.pytestArgs}" > $out/pytest_command.txt

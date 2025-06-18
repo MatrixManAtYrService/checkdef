@@ -20,10 +20,7 @@ in
       dependencies = [ pythonEnv ];
       command = ''
         rm -rf ${outputDir}
-        pdoc --html --output-dir . ${modulePath}
-        if [ -d "${modulePath}" ]; then
-          mv "${modulePath}" "${outputDir}"
-        fi
+        pdoc --output-directory ${outputDir} ${modulePath}
         echo "📚 Generated docs in ${outputDir}/ directory"
       '';
     };
