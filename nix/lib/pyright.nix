@@ -14,7 +14,7 @@ in
     makesChanges = false;
   };
 
-  pattern = { src, pythonEnv, name ? "pyright", description ? "Python type checking with pyright" }:
+  pattern = { pythonEnv, name ? "pyright", description ? "Python type checking with pyright", ... }:
     makeCheckWithDeps {
       inherit name description;
       dependencies = [ pythonEnv ];

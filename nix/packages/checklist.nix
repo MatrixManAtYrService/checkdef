@@ -1,5 +1,5 @@
 # Self-checks checklist for the checks framework
-{ inputs, pkgs, pname ? "checklist", ... }:
+{ pkgs, pname ? "checklist", ... }:
 
 let
 

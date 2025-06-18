@@ -36,7 +36,6 @@ let
 
         # Run the appropriate command based on verbose mode
         if [ "$verbose" = "true" ]; then
-          echo "🔧 Running: ${lib.escapeShellArg verboseCommand}"
           ${verboseCommand}
         else
           ${command}
@@ -64,11 +63,20 @@ let
             echo "[${checkName}] ${check.description}"
             echo "================================================"
 
+            # Start timing
+            start_time=$(date +%s%3N)
+
             # Execute the check script
             ${check.scriptContent}
 
+            # Calculate and display timing
+            end_time=$(date +%s%3N)
+            duration_ms=$((end_time - start_time))
+            duration_s=$((duration_ms / 1000))
+            duration_ms_remainder=$((duration_ms % 1000))
+
             # If we get here, the check passed
-            echo "✅ ${check.description} - PASSED"
+            echo "✅ ${check.description} - PASSED (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
           '')
           scriptChecks)
       );
@@ -106,6 +114,9 @@ let
               echo "[${checkName}] ${description}"
               echo "================================================"
 
+              # Start timing
+              start_time=$(date +%s%3N)
+
               # Create a temporary directory for the build result link
               temp_dir=$(mktemp -d)
               result_link="$temp_dir/check-result"
@@ -125,7 +136,7 @@ let
                 target_derivation="${derivation}"
                 # Show the underlying command if available
                 ${if normalCommand != "" then ''echo "🔧 Underlying command: ${normalCommand}"'' else ""}
-                echo "🔧 Nix build command: nix build \"$target_derivation\" --out-link \"$result_link\" (silent)"
+                echo "🔧 Nix build command: nix build \"$target_derivation\" --out-link \"$result_link\""
                 if nix build "$target_derivation" --out-link "$result_link" 2>/dev/null; then
                   build_success=true
                 else
@@ -133,16 +144,22 @@ let
                 fi
               fi
 
+              # Calculate timing
+              end_time=$(date +%s%3N)
+              duration_ms=$((end_time - start_time))
+              duration_s=$((duration_ms / 1000))
+              duration_ms_remainder=$((duration_ms % 1000))
+
               if [ "$build_success" = "true" ]; then
                 # Read the test summary from the build result if available
                 if [ -f "$result_link/pytest_summary.txt" ]; then
                   summary=$(cat "$result_link/pytest_summary.txt")
-                  echo "✅ ${checkName} - $summary"
+                  echo "✅ ${checkName} - $summary (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
                 else
-                  echo "✅ ${checkName} - PASSED"
+                  echo "✅ ${checkName} - PASSED (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
                 fi
               else
-                echo "❌ ${checkName} - FAILED"
+                echo "❌ ${checkName} - FAILED (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
                 # Clean up temp directory before exit
                 rm -rf "$temp_dir"
                 exit 1
