@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 import time
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import Tuple, Optional
@@ -85,30 +86,39 @@ class CheckdefTestContainer:
         ]
         
         print(f"🐳 Building Docker image: {image_tag}")
-        print(f"Build command: {' '.join(build_cmd)}")
         result = subprocess.run(build_cmd, capture_output=True, text=True)
-        
-        print(f"Build exit code: {result.returncode}")
-        if result.stdout:
-            print(f"Build stdout: {result.stdout}")
-        if result.stderr:
-            print(f"Build stderr: {result.stderr}")
         
         if result.returncode != 0:
             pytest.fail(f"Failed to build Docker image {image_tag}: {result.stderr}")
             
-        # Verify the image was created
-        verify_cmd = [self.container_tool, "images", image_tag]
-        verify_result = subprocess.run(verify_cmd, capture_output=True, text=True)
-        print(f"Image verification: {verify_result.stdout}")
-        if image_tag not in verify_result.stdout:
-            pytest.fail(f"Docker image {image_tag} was not created successfully")
+        # Extract image hash from build output
+        image_hash = None
+        build_output = result.stdout + result.stderr
+        
+        # Look for image hash in different formats
+        # New buildkit format: "writing image sha256:abc123..."
+        hash_match = re.search(r'writing image sha256:([a-f0-9]+)', build_output)
+        if hash_match:
+            image_hash = f"sha256:{hash_match.group(1)}"
+        else:
+            # Old format: "Successfully built abc123"
+            hash_match = re.search(r'Successfully built ([a-f0-9]+)', build_output)
+            if hash_match:
+                image_hash = hash_match.group(1)
+        
+        if not image_hash:
+            # Fallback to tag if we can't extract hash
+            print("⚠️  Could not extract image hash, falling back to tag")
+            image_reference = image_tag
+        else:
+            image_reference = image_hash
+            print(f"✅ Built image with hash: {image_hash}")
             
-        # Start container
+        # Start container using image hash or tag
         run_cmd = [
             self.container_tool, "run", "-d",  # detached mode
             "-w", "/workspace/checkdef-demo",  # working directory
-            image_tag,
+            image_reference,
             "tail", "-f", "/dev/null"  # Keep container running
         ]
         
