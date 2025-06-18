@@ -45,10 +45,9 @@ let
 
   # Shared script generation logic
   generateScript =
-    { name              # Script name (e.g., "htutil-checklist-fast")
-    , suiteName ? name  # Name for the check suite (defaults to name)
-    , scriptChecks ? { } # Script-based checks
+    { scriptChecks ? { } # Script-based checks
     , derivationChecks ? { } # Derivation-based checks
+    , ...
     }:
     let
       # Generate scripts for traditional script-based checks
@@ -103,120 +102,120 @@ let
                 else "";
             in
             ''
-              echo "================================================"
-              echo "[${checkName}] ${description}"
-              echo "================================================"
+                            echo "================================================"
+                            echo "[${checkName}] ${description}"
+                            echo "================================================"
 
-              # Start timing (using Python for precise timing)
-              start_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
+                            # Start timing (using Python for precise timing)
+                            start_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
 
-              # Create a temporary directory for the build result link
-              temp_dir=$(mktemp -d)
-              result_link="$temp_dir/check-result"
+                            # Create a temporary directory for the build result link
+                            temp_dir=$(mktemp -d)
+                            result_link="$temp_dir/check-result"
 
-              # Choose the appropriate derivation based on verbose mode
-              if [ "$verbose" = "true" ]; then
-                target_derivation="${verboseDerivation}"
-                # Show the underlying command if available
-                ${if verboseCommand != "" then ''echo "🔧 Underlying command: ${verboseCommand}"'' else ""}
-                echo "🔧 Nix build command: nix build -v \"$target_derivation\" --out-link \"$result_link\" --print-build-logs"
-                if nix build -v "$target_derivation" --out-link "$result_link" --print-build-logs; then
-                  build_success=true
-                else
-                  build_success=false
-                fi
-              else
-                target_derivation="${derivation}"
-                # In non-verbose mode, don't show command details
-                if nix build "$target_derivation" --out-link "$result_link" 2>/dev/null; then
-                  build_success=true
-                else
-                  build_success=false
-                fi
-              fi
+                            # Choose the appropriate derivation based on verbose mode
+                            if [ "$verbose" = "true" ]; then
+                              target_derivation="${verboseDerivation}"
+                              # Show the underlying command if available
+                              ${if verboseCommand != "" then ''echo "🔧 Underlying command: ${verboseCommand}"'' else ""}
+                              echo "🔧 Nix build command: nix build -v \"$target_derivation\" --out-link \"$result_link\" --print-build-logs"
+                              if nix build -v "$target_derivation" --out-link "$result_link" --print-build-logs; then
+                                build_success=true
+                              else
+                                build_success=false
+                              fi
+                            else
+                              target_derivation="${derivation}"
+                              # In non-verbose mode, don't show command details
+                              if nix build "$target_derivation" --out-link "$result_link" 2>/dev/null; then
+                                build_success=true
+                              else
+                                build_success=false
+                              fi
+                            fi
 
-              # Calculate timing
-              end_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
-              duration=$(python3 -c "print(f'{float(\"$end_time\") - float(\"$start_time\"):.3f}s')")
+                            # Calculate timing
+                            end_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
+                            duration=$(python3 -c "print(f'{float(\"$end_time\") - float(\"$start_time\"):.3f}s')")
 
-              if [ "$build_success" = "true" ]; then
-                # In verbose mode, show stored logs if available
-                if [ "$verbose" = "true" ]; then
-                  if [ -f "$result_link/build_logs.txt" ]; then
-                    echo "🔧 Stored build logs:"
-                    echo "----------------------------------------"
-                    cat "$result_link/build_logs.txt"
-                    echo "----------------------------------------"
-                  elif [ -f "$result_link/pytest_output.txt" ]; then
-                    echo "🔧 Stored pytest output:"
-                    echo "----------------------------------------"
-                    cat "$result_link/pytest_output.txt"
-                    echo "----------------------------------------"
-                  fi
-                fi
+                            if [ "$build_success" = "true" ]; then
+                              # In verbose mode, show stored logs if available
+                              if [ "$verbose" = "true" ]; then
+                                if [ -f "$result_link/build_logs.txt" ]; then
+                                  echo "🔧 Stored build logs:"
+                                  echo "----------------------------------------"
+                                  cat "$result_link/build_logs.txt"
+                                  echo "----------------------------------------"
+                                elif [ -f "$result_link/pytest_output.txt" ]; then
+                                  echo "🔧 Stored pytest output:"
+                                  echo "----------------------------------------"
+                                  cat "$result_link/pytest_output.txt"
+                                  echo "----------------------------------------"
+                                fi
+                              fi
 
-                # For derivation-based checks, show dual timing if this is a cached result
-                # Create a cache directory for storing original build times
-                cache_dir="''${HOME:-/tmp}/.checkdef-cache"
-                mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp/.checkdef-cache-$USER"
-                mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
-                
-                # Create a hash of the derivation path for the cache key
-                derivation_hash=$(echo "$target_derivation" | ${pkgs.coreutils}/bin/sha256sum | ${pkgs.coreutils}/bin/cut -d' ' -f1 | ${pkgs.coreutils}/bin/head -c 16)
-                timing_cache_file="$cache_dir/timing-$derivation_hash.txt"
-                
-                # Determine if this was a cache hit (quick) or fresh build (slow)
-                duration_seconds=$(echo "$duration" | ${pkgs.gnused}/bin/sed 's/s$//')
-                is_cached=false
-                
-                # Check if we have a previous timing record for comparison
-                if [ -f "$timing_cache_file" ]; then
-                  previous_duration=$(cat "$timing_cache_file" 2>/dev/null || echo "0.1s")
-                  previous_seconds=$(echo "$previous_duration" | ${pkgs.gnused}/bin/sed 's/s$//')
-                  
-                  # If current build is significantly faster than previous (less than 80%), it's cached
-                  # OR if build took less than 1 second, it's likely cached
-                  if python3 -c "
-import sys
-current = float(\"$duration_seconds\")
-previous = float(\"$previous_seconds\")
-# Cached if current < 1s OR current is less than 80% of previous time
-is_cached = current < 1.0 or (previous > 0 and current < previous * 0.8)
-sys.exit(0 if is_cached else 1)
-" 2>/dev/null; then
-                    is_cached=true
-                  fi
-                fi
-                
-                if [ "$is_cached" = "true" ] && [ -f "$timing_cache_file" ]; then
-                  # This is a cached result, show both original and reference timing
-                  original_duration=$(cat "$timing_cache_file" 2>/dev/null || echo "unknown")
-                  timing_display="(original: $original_duration reference: $duration)"
-                else
-                  # This is a fresh build, store the timing for future reference
-                  echo "$duration" > "$timing_cache_file" 2>/dev/null || true
-                  timing_display="($duration)"
-                fi
+                              # For derivation-based checks, show dual timing if this is a cached result
+                              # Create a cache directory for storing original build times
+                              cache_dir="''${HOME:-/tmp}/.checkdef-cache"
+                              mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp/.checkdef-cache-$USER"
+                              mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
 
-                # Read the test summary from the build result if available
-                if [ -f "$result_link/pytest_summary.txt" ]; then
-                  summary=$(cat "$result_link/pytest_summary.txt")
-                  echo "✅ ${checkName} - $summary $timing_display"
-                else
-                  echo "✅ ${checkName} - PASSED $timing_display"
-                fi
-              else
-                echo "❌ ${checkName} - FAILED ($duration)"
-                # Track failures but don't exit immediately
-                if [ -z "''${FAILED_CHECKS:-}" ]; then
-                  FAILED_CHECKS="${checkName}"
-                else
-                  FAILED_CHECKS="$FAILED_CHECKS,${checkName}"
-                fi
-              fi
+                              # Create a hash of the derivation path for the cache key
+                              derivation_hash=$(echo "$target_derivation" | ${pkgs.coreutils}/bin/sha256sum | ${pkgs.coreutils}/bin/cut -d' ' -f1 | ${pkgs.coreutils}/bin/head -c 16)
+                              timing_cache_file="$cache_dir/timing-$derivation_hash.txt"
 
-              # Clean up temp directory
-              rm -rf "$temp_dir"
+                              # Determine if this was a cache hit (quick) or fresh build (slow)
+                              duration_seconds=$(echo "$duration" | ${pkgs.gnused}/bin/sed 's/s$//')
+                              is_cached=false
+
+                              # Check if we have a previous timing record for comparison
+                              if [ -f "$timing_cache_file" ]; then
+                                previous_duration=$(cat "$timing_cache_file" 2>/dev/null || echo "0.1s")
+                                previous_seconds=$(echo "$previous_duration" | ${pkgs.gnused}/bin/sed 's/s$//')
+
+                                # If current build is significantly faster than previous (less than 80%), it's cached
+                                # OR if build took less than 1 second, it's likely cached
+                                if python3 -c "
+              import sys
+              current = float(\"$duration_seconds\")
+              previous = float(\"$previous_seconds\")
+              # Cached if current < 1s OR current is less than 80% of previous time
+              is_cached = current < 1.0 or (previous > 0 and current < previous * 0.8)
+              sys.exit(0 if is_cached else 1)
+              " 2>/dev/null; then
+                                  is_cached=true
+                                fi
+                              fi
+
+                              if [ "$is_cached" = "true" ] && [ -f "$timing_cache_file" ]; then
+                                # This is a cached result, show both original and reference timing
+                                original_duration=$(cat "$timing_cache_file" 2>/dev/null || echo "unknown")
+                                timing_display="(original: $original_duration reference: $duration)"
+                              else
+                                # This is a fresh build, store the timing for future reference
+                                echo "$duration" > "$timing_cache_file" 2>/dev/null || true
+                                timing_display="($duration)"
+                              fi
+
+                              # Read the test summary from the build result if available
+                              if [ -f "$result_link/pytest_summary.txt" ]; then
+                                summary=$(cat "$result_link/pytest_summary.txt")
+                                echo "✅ ${checkName} - $summary $timing_display"
+                              else
+                                echo "✅ ${checkName} - PASSED $timing_display"
+                              fi
+                            else
+                              echo "❌ ${checkName} - FAILED ($duration)"
+                              # Track failures but don't exit immediately
+                              if [ -z "''${FAILED_CHECKS:-}" ]; then
+                                FAILED_CHECKS="${checkName}"
+                              else
+                                FAILED_CHECKS="$FAILED_CHECKS,${checkName}"
+                              fi
+                            fi
+
+                            # Clean up temp directory
+                            rm -rf "$temp_dir"
             ''
           )
           derivationChecks)

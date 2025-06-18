@@ -35,7 +35,6 @@ let
     statix = statixCheck.pattern { inherit src; };
     nixpkgs-fmt = nixpkgsFmtCheck.pattern { inherit src; };
     trim-whitespace = trimWhitespaceCheck.pattern {
-      inherit src;
       filePatterns = [ "*.nix" "*.md" ];
     };
   };
