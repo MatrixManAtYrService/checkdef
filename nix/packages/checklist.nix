@@ -2,29 +2,26 @@
 { inputs, pkgs, pname ? "checklist", ... }:
 
 let
-  # Use nixpkgs input to get a separate pkgs instance
-  inherit (inputs) nixpkgs;
-  selfCheckPkgs = nixpkgs.legacyPackages.${pkgs.system};
 
   # Import check definitions directly to avoid circular dependency
-  utils = (import ../lib/utils.nix) selfCheckPkgs;
+  utils = (import ../lib/utils.nix) pkgs;
   inherit (utils) runner;
 
   # will be executed on this repo
-  deadnixCheck = (import ../lib/deadnix.nix) selfCheckPkgs;
-  statixCheck = (import ../lib/statix.nix) selfCheckPkgs;
-  nixpkgsFmtCheck = (import ../lib/nixpkgs-fmt.nix) selfCheckPkgs;
-  trimWhitespaceCheck = (import ../lib/trim-whitespace.nix) selfCheckPkgs;
+  deadnixCheck = (import ../lib/deadnix.nix) pkgs;
+  statixCheck = (import ../lib/statix.nix) pkgs;
+  nixpkgsFmtCheck = (import ../lib/nixpkgs-fmt.nix) pkgs;
+  trimWhitespaceCheck = (import ../lib/trim-whitespace.nix) pkgs;
 
   # script generation validation only
-  pyrightCheck = (import ../lib/pyright.nix) selfCheckPkgs;
-  ruffCheckCheck = (import ../lib/ruff-check.nix) selfCheckPkgs;
-  ruffFormatCheck = (import ../lib/ruff-format.nix) selfCheckPkgs;
-  pdocCheck = (import ../lib/pdoc.nix) selfCheckPkgs;
-  fawltydepsCheck = (import ../lib/fawltydeps.nix) selfCheckPkgs;
+  pyrightCheck = (import ../lib/pyright.nix) pkgs;
+  ruffCheckCheck = (import ../lib/ruff-check.nix) pkgs;
+  ruffFormatCheck = (import ../lib/ruff-format.nix) pkgs;
+  pdocCheck = (import ../lib/pdoc.nix) pkgs;
+  fawltydepsCheck = (import ../lib/fawltydeps.nix) pkgs;
 
   # Dummy python environment for script generation validation
-  dummyPythonEnv = selfCheckPkgs.python3.withPackages (ps: [ ps.pip ]);
+  dummyPythonEnv = pkgs.python3.withPackages (ps: [ ps.pip ]);
 
   # Project source
   src = ../../.;
@@ -83,8 +80,12 @@ let
 
 in
 # Create a wrapper script that validates generated scripts as one of the checks
-selfCheckPkgs.writeShellScriptBin pname ''
+pkgs.writeShellScriptBin pname ''
   set -euo pipefail
+
+  # Create a temporary directory for validation files
+  temp_dir=$(mktemp -d)
+  trap 'rm -rf "$temp_dir"' EXIT
 
   echo "🚀 running checklist: Checkdef Self-Checks"
 
@@ -130,7 +131,7 @@ selfCheckPkgs.writeShellScriptBin pname ''
     rm -f /tmp/${checkName}_syntax.txt
 
     # Check with shellcheck
-    if ! ${selfCheckPkgs.shellcheck}/bin/shellcheck "$script_path" 2>/tmp/${checkName}_shellcheck.txt; then
+    if ! ${pkgs.shellcheck}/bin/shellcheck "$script_path" 2>/tmp/${checkName}_shellcheck.txt; then
       echo "❌ ${checkName}: Shellcheck validation failed:"
       cat /tmp/${checkName}_shellcheck.txt
       echo ""

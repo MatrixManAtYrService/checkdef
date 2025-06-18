@@ -25,18 +25,30 @@ in
       inherit name description src;
       dependencies = with pkgs; [ findutils gnused ];
       command = ''
-        echo "Trimming trailing whitespace from files..."
-        ${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +
-        echo "✅ Trailing whitespace trimmed"
+        echo "Checking for trailing whitespace..."
+
+        # First, check if any files have trailing whitespace
+        if ${findCommand} -exec grep -l '[[:space:]]$' {} \; | head -1 | grep -q .; then
+          echo "Found files with trailing whitespace, trimming..."
+          ${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +
+          echo "✅ Trailing whitespace trimmed"
+        else
+          echo "✅ No trailing whitespace found"
+        fi
       '';
       verboseCommand = ''
         echo "🔧 Finding files matching patterns: ${toString filePatterns}"
         echo "🔧 Excluding directories: ${toString exclude}"
         echo "🔧 Find command: ${findCommand}"
 
-        ${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +
-
-        echo "✅ Trailing whitespace trimmed"
+        # First, check if any files have trailing whitespace
+        if ${findCommand} -exec grep -l '[[:space:]]$' {} \; | head -1 | grep -q .; then
+          echo "🔧 Found files with trailing whitespace, trimming..."
+          ${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +
+          echo "✅ Trailing whitespace trimmed"
+        else
+          echo "✅ No trailing whitespace found"
+        fi
       '';
     };
 }
