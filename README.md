@@ -81,7 +81,7 @@ Checklists can be composed of other checklists, so you can create granular sets 
 
 **scriptChecks** run directly in your shell:
 - ❌ **Not cached** by Nix store - run every time
-- ✅ **Can modify files** (auto-formatting, etc.)  
+- ✅ **Can modify files** (auto-formatting, etc.)
 - ⚡ **Fast startup** - no build step
 
 **derivationChecks** run in Nix build sandbox:
@@ -94,7 +94,7 @@ Checklists can be composed of other checklists, so you can create granular sets 
 Control when checks rebuild by specifying `includePatterns` with glob patterns:
 
 ```nix
-# Only rebuild when frontend code changes  
+# Only rebuild when frontend code changes
 frontendTests = checks.pytest-cached {
   includePatterns = [ "frontend/**" "tests/frontend/**" "pyproject.toml" ];
   tests = [ "tests/frontend" ];
@@ -112,7 +112,7 @@ This enables **selective test execution** - frontend tests don't run when backen
 ## Available Checks
 
 - **deadnix** - Dead Nix code detection
-- **statix** - Nix static analysis  
+- **statix** - Nix static analysis
 - **nixpkgs-fmt** - Nix formatting
 - **trim-whitespace** - Remove trailing whitespace from files
 - **ruff-check/ruff-format** - Python linting/formatting

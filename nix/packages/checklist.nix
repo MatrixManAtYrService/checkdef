@@ -8,27 +8,161 @@ let
 
   # Import check definitions directly to avoid circular dependency
   utils = (import ../lib/utils.nix) selfCheckPkgs;
+  inherit (utils) runner;
+
+  # will be executed on this repo
   deadnixCheck = (import ../lib/deadnix.nix) selfCheckPkgs;
   statixCheck = (import ../lib/statix.nix) selfCheckPkgs;
   nixpkgsFmtCheck = (import ../lib/nixpkgs-fmt.nix) selfCheckPkgs;
+  trimWhitespaceCheck = (import ../lib/trim-whitespace.nix) selfCheckPkgs;
 
-  inherit (utils) runner;
+  # script generation validation only
+  pyrightCheck = (import ../lib/pyright.nix) selfCheckPkgs;
+  ruffCheckCheck = (import ../lib/ruff-check.nix) selfCheckPkgs;
+  ruffFormatCheck = (import ../lib/ruff-format.nix) selfCheckPkgs;
+  pdocCheck = (import ../lib/pdoc.nix) selfCheckPkgs;
+  fawltydepsCheck = (import ../lib/fawltydeps.nix) selfCheckPkgs;
+
+  # Dummy python environment for script generation validation
+  dummyPythonEnv = selfCheckPkgs.python3.withPackages (ps: [ ps.pip ]);
 
   # Project source
   src = ../../.;
 
-  # Build individual checks using check definitions
-  # Only include Nix-related checks since this is a Nix-only project
-  scriptChecks = {
+  # Relevant checks that should actually be executed on this repo
+  relevantChecks = {
     deadnix = deadnixCheck.pattern { inherit src; };
     statix = statixCheck.pattern { inherit src; };
     nixpkgs-fmt = nixpkgsFmtCheck.pattern { inherit src; };
+    trim-whitespace = trimWhitespaceCheck.pattern {
+      inherit src;
+      filePatterns = [ "*.nix" "*.md" ];
+    };
+  };
+
+  # Python/irrelevant checks - just for script generation validation (not execution)
+  validationOnlyChecks = {
+    pyright = pyrightCheck.pattern {
+      inherit src;
+      pythonEnv = dummyPythonEnv;
+    };
+    ruff-check = ruffCheckCheck.pattern { inherit src; };
+    ruff-format = ruffFormatCheck.pattern { inherit src; };
+    pdoc = pdocCheck.pattern {
+      inherit src;
+      pythonEnv = dummyPythonEnv;
+      modulePath = "example/module";
+    };
+    fawltydeps = fawltydepsCheck.pattern {
+      inherit src;
+      pythonEnv = dummyPythonEnv;
+      ignoreUndeclared = [ "example" ];
+    };
+  };
+
+  # ALL checks for validation - both relevant and irrelevant
+  allChecksForValidation = relevantChecks // validationOnlyChecks;
+
+  # Build individual validation scripts for ALL checks
+  individualValidationScripts = builtins.mapAttrs
+    (checkName: checkDef:
+      runner {
+        name = "${pname}-${checkName}-validation";
+        suiteName = "Checkdef ${checkName} Script Generation";
+        scriptChecks = { "${checkName}" = checkDef; };
+      }
+    )
+    allChecksForValidation;
+
+  # Build the execution scripts for relevant checks
+  relevantExecution = runner {
+    name = "${pname}-execution";
+    suiteName = "Checkdef Relevant Checks";
+    scriptChecks = relevantChecks;
   };
 
 in
-# Use runner to create the combined check script
-runner {
-  name = pname;
-  suiteName = "Checkdef Self-Checks";
-  inherit scriptChecks;
-}
+# Create a wrapper script that validates generated scripts as one of the checks
+selfCheckPkgs.writeShellScriptBin pname ''
+  set -euo pipefail
+
+  echo "🚀 running checklist: Checkdef Self-Checks"
+
+  # Script validation check
+  echo "================================================"
+  echo "[script-validation] Generated script validation (shellcheck)"
+  echo "================================================"
+
+  # Track overall validation status
+  overall_validation_failed=false
+
+  # Validate each check individually
+  ${builtins.concatStringsSep "\n" (builtins.attrValues (builtins.mapAttrs (checkName: checkScript: ''
+
+  echo "🔧 Validating ${checkName} script generation..."
+
+  # Build the individual validation script for this check
+  if ! nix build ${checkScript} --no-link 2>/tmp/${checkName}_build.log; then
+    echo "❌ Failed to build ${checkName} validation script"
+    cat /tmp/${checkName}_build.log
+    echo "❌ ${checkName} script generation - FAILED"
+    overall_validation_failed=true
+    rm -f /tmp/${checkName}_build.log
+  else
+    rm -f /tmp/${checkName}_build.log
+
+    # Validate the generated script
+    script_path="${checkScript}/bin/${pname}-${checkName}-validation"
+    check_failed=false
+
+    # Check bash syntax
+    if ! bash -n "$script_path" 2>/tmp/${checkName}_syntax.txt; then
+      echo "❌ ${checkName}: Bash syntax validation failed:"
+      cat /tmp/${checkName}_syntax.txt
+      echo ""
+      echo "💡 Generated script: $script_path"
+      echo "Generated script content (with line numbers):"
+      cat -n "$script_path"
+      echo ""
+      check_failed=true
+      overall_validation_failed=true
+    fi
+    rm -f /tmp/${checkName}_syntax.txt
+
+    # Check with shellcheck
+    if ! ${selfCheckPkgs.shellcheck}/bin/shellcheck "$script_path" 2>/tmp/${checkName}_shellcheck.txt; then
+      echo "❌ ${checkName}: Shellcheck validation failed:"
+      cat /tmp/${checkName}_shellcheck.txt
+      echo ""
+      echo "💡 Generated script: $script_path"
+      echo "Generated script content (with line numbers):"
+      cat -n "$script_path"
+      echo ""
+      check_failed=true
+      overall_validation_failed=true
+    fi
+    rm -f /tmp/${checkName}_shellcheck.txt
+
+    if [ "$check_failed" = "false" ]; then
+      echo "✅ ${checkName} script validation - PASSED"
+    else
+      echo "❌ ${checkName} script validation - FAILED"
+    fi
+  fi
+  '') individualValidationScripts))}
+
+  # Show overall validation result
+  if [ "$overall_validation_failed" = "true" ]; then
+    echo "❌ Generated script validation - FAILED (see individual check failures above)"
+  else
+    echo "✅ Generated script validation - PASSED (all checks validated successfully)"
+  fi
+
+  echo ""
+
+  # Run the actual relevant checks for this repository
+  ${relevantExecution}/bin/${pname}-execution "$@"
+
+  echo ""
+  echo "🎉 All checks completed!"
+''

@@ -3,6 +3,7 @@
 
   inputs = {
     blueprint.url = "github:numtide/blueprint";
+    globset.url = "github:pdtpartners/globset";
   };
 
   outputs = inputs: inputs.blueprint {

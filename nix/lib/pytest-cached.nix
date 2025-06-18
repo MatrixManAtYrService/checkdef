@@ -1,9 +1,9 @@
 # pytest-cached check definition - creates a derivation for caching
-# Debug version to troubleshoot file staging
+{ inputs, ... }:
 pkgs:
 let
   inherit (pkgs) lib;
-  globset = pkgs.globset.lib;
+  globset = inputs.globset.lib;
 in
 {
   meta = {
@@ -29,15 +29,11 @@ in
     let
       defaultTestConfig = {
         baseDeps = [ ];
-        baseEnv = { };
+        extraEnvVars = { };
+        pytestArgs = [ ];
       };
-      finalTestConfig = defaultTestConfig // testConfig;
 
-      # Add wheel path to environment if provided
-      wheelEnv =
-        if wheelPath != null
-        then { "${wheelPathEnvVar}" = wheelPath; }
-        else { };
+      finalTestConfig = lib.recursiveUpdate defaultTestConfig testConfig;
 
       # Use globset to filter source files based on glob patterns
       srcForCache = lib.fileset.toSource {
@@ -62,86 +58,70 @@ in
 
           # Set up environment variables
           buildPhase = ''
-            echo "🧪 Running pytest${if verboseMode then " (verbose mode)" else ""}..."
-            
-            # Set up any wheel environment variables
-            ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: value: ''
-              export ${name}="${value}"
-              echo "Using ${name}: $${name}"
-            '') (finalTestConfig.baseEnv // wheelEnv))}
+            runHook preBuild
 
-            # Run pytest and capture output
-            set +e  # Don't exit on pytest failure, we want to parse results
-            pytest_output=$(pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} 2>&1)
-            pytest_exit_code=$?
-            set -e
-            
-            echo "$pytest_output"
-            
-            # Parse results from pytest output
-            echo "📊 Test Results:"
-            
-            # Extract the summary line (e.g., "21 passed in 9.67s" or "19 passed, 2 skipped in 25.44s")
-            summary_line=$(echo "$pytest_output" | grep -E "^=+ .* (passed|failed|skipped|error)" | tail -1 || echo "")
-            
-            if [ -n "$summary_line" ]; then
-              echo "   $summary_line"
-              
-              # Clean up the summary for external consumption (remove the === markers)
-              clean_summary=$(echo "$summary_line" | sed 's/^=*[[:space:]]*//' | sed 's/[[:space:]]*=*$//')
-              echo "$clean_summary" > pytest_summary.txt
-              
-              # Check if there were failures or errors
-              if echo "$summary_line" | grep -q "failed\|error"; then
-                echo "❌ Tests failed!"
-                exit 1
-              else
-                echo "✅ All tests passed!"
-              fi
+            # Set up environment variables from testConfig
+            ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") finalTestConfig.extraEnvVars)}
+
+            # Set wheel path if provided
+            ${lib.optionalString (wheelPath != null) ''
+              export ${wheelPathEnvVar}="${wheelPath}"
+            ''}
+
+            runHook postBuild
+          '';
+
+          checkPhase = ''
+            runHook preCheck
+
+            echo "🧪 Running pytest with flags: ${pytestFlags} ${builtins.concatStringsSep " " tests}"
+
+            # Run the tests and capture results
+            if pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} ${builtins.concatStringsSep " " finalTestConfig.pytestArgs}; then
+              test_result="PASSED"
+              echo "✅ All tests passed!"
             else
-              echo "⚠️  Could not parse test results"
-              echo "Could not parse test results" > pytest_summary.txt
-              # Still exit with pytest's exit code
-              exit $pytest_exit_code
+              test_result="FAILED"
+              echo "❌ Some tests failed"
+              exit 1
             fi
+
+            runHook postCheck
           '';
 
           installPhase = ''
+            runHook preInstall
+
             mkdir -p $out
-            echo "pytest completed successfully" > $out/pytest-result
-            
-            # Save the test summary for external reading
-            if [ -f pytest_summary.txt ]; then
-              cp pytest_summary.txt $out/
+
+            # Create a summary file for the runner to read
+            if [ "$test_result" = "PASSED" ]; then
+              echo "PASSED" > $out/pytest_summary.txt
+            else
+              echo "FAILED" > $out/pytest_summary.txt
             fi
-            
-            # Also save the full pytest output for debugging
-            if [ -n "$pytest_output" ]; then
-              echo "$pytest_output" > $out/pytest-full-output.txt
-            fi
+
+            # Store the command that was run for reference
+            echo "pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} ${builtins.concatStringsSep " " finalTestConfig.pytestArgs}" > $out/pytest_command.txt
+
+            runHook postInstall
           '';
 
-          meta = with lib; {
+          meta = {
             inherit description;
-            platforms = platforms.unix;
-            # Add command information for display purposes
             command = "pytest ${pytestFlags} ${builtins.concatStringsSep " " tests}";
           };
-
-          passthru = {
-            # Allow creating verbose version of this derivation
-            verbose = mkPytestDerivation true;
-
-            run = pkgs.writeShellScriptBin "${name}-direct-run-error" ''
-              #!/bin/sh
-              echo "❌ The check '${name}' cannot be run directly."
-              echo "💡 To run this check, include it in a 'checks.runner' and execute the runner."
-              echo "   For example: nix run .#my-checklist"
-              exit 1
-            '';
-          };
         };
+
+      # Create both normal and verbose versions
+      normalDerivation = mkPytestDerivation false;
+      verboseDerivation = mkPytestDerivation true;
+
     in
-    # Return the normal (non-verbose) derivation by default
-    mkPytestDerivation false;
+    # Return the normal derivation with verbose as a passthru
+    normalDerivation // {
+      passthru = {
+        verbose = verboseDerivation;
+      };
+    };
 }

@@ -33,13 +33,13 @@ in
         echo "🔧 Finding files matching patterns: ${toString filePatterns}"
         echo "🔧 Excluding directories: ${toString exclude}"
         echo "🔧 Find command: ${findCommand}"
-        
+
         file_count=$(${findCommand} | wc -l)
-        echo "📁 Processing $file_count files..."
-        
+        echo "📁 Processing \"\"\"$file_count\"\"\" files..."
+
         ${findCommand} -exec sed -i 's/[[:space:]]*$//' {} +
-        
-        echo "✅ Trailing whitespace trimmed from $file_count files"
+
+        echo "✅ Trailing whitespace trimmed from \"\"\"$file_count\"\"\" files"
       '';
     };
 }

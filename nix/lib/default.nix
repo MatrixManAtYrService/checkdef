@@ -1,5 +1,5 @@
 # Library re-exports - flattened structure for simpler usage
-_:
+{ inputs, ... }:
 
 # Return a function that takes pkgs and returns the lib modules
 pkgs:
@@ -13,7 +13,7 @@ let
     ruff-format = (import ./ruff-format.nix) pkgs;
     pyright = (import ./pyright.nix) pkgs;
     fawltydeps = (import ./fawltydeps.nix) pkgs;
-    pytest-cached = (import ./pytest-cached.nix) pkgs;
+    pytest-cached = (import ./pytest-cached.nix { inherit inputs; }) pkgs;
     pdoc = (import ./pdoc.nix) pkgs;
     trim-whitespace = (import ./trim-whitespace.nix) pkgs;
   };
@@ -25,6 +25,6 @@ let
   utils = (import ./utils.nix) pkgs;
 in
 {
-  # Core framework functions and utilities  
+  # Core framework functions and utilities
   inherit (utils) makeCheckWithDeps runner;
 } // checkFunctions  # Merge in all check functions at the top level

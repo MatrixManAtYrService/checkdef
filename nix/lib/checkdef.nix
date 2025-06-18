@@ -1,5 +1,5 @@
 # Check definitions - imports all individual check definitions
-_:
+{ inputs, ... }:
 
 pkgs:
 let
@@ -12,11 +12,11 @@ let
     ruff-format = (import ./ruff-format.nix) pkgs;
     pyright = (import ./pyright.nix) pkgs;
     fawltydeps = (import ./fawltydeps.nix) pkgs;
-    pytest-cached = (import ./pytest-cached.nix) pkgs;
+    pytest-cached = (import ./pytest-cached.nix { inherit inputs; }) pkgs;
     pdoc = (import ./pdoc.nix) pkgs;
   };
 
-  # Extract check definitions 
+  # Extract check definitions
   checkdef = builtins.mapAttrs (_: def: def.pattern) checkModules;
 
 in
