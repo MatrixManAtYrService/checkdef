@@ -1,5 +1,5 @@
 # Self-checks checklist for the checks framework
-{ pkgs, pname ? "checklist", ... }:
+{ pkgs, inputs ? {}, pname ? "checklist", ... }:
 
 let
 
@@ -19,6 +19,9 @@ let
   ruffFormatCheck = (import ../lib/ruff-format.nix) pkgs;
   pdocCheck = (import ../lib/pdoc.nix) pkgs;
   fawltydepsCheck = (import ../lib/fawltydeps.nix) pkgs;
+  
+  # integration testing
+  pytestIntegrationCheck = (import ../lib/pytest-integration.nix) pkgs;
 
   # Dummy python environment for script generation validation
   dummyPythonEnv = pkgs.python3.withPackages (ps: [ ps.pip ]);
@@ -57,8 +60,17 @@ let
     };
   };
 
+  # Integration checks that actually run (when checkdef-demo is available)
+  integrationChecks = pkgs.lib.optionalAttrs (builtins.pathExists inputs.checkdef-demo) {
+    pytest-integration = pytestIntegrationCheck.pattern {
+      inherit src;
+      pythonEnv = pkgs.python3.withPackages (ps: with ps; [ pytest ]);
+      checkdefDemoPath = inputs.checkdef-demo;
+    };
+  };
+
   # ALL checks for validation - both relevant and irrelevant
-  allChecksForValidation = relevantChecks // validationOnlyChecks;
+  allChecksForValidation = relevantChecks // validationOnlyChecks // integrationChecks;
 
   # Build individual validation scripts for ALL checks
   individualValidationScripts = builtins.mapAttrs
@@ -76,6 +88,13 @@ let
     name = "${pname}-execution";
     suiteName = "Checkdef Relevant Checks";
     scriptChecks = relevantChecks;
+  };
+
+  # Build the execution scripts for all checks including integration tests
+  fullExecution = runner {
+    name = "${pname}-full";
+    suiteName = "Checkdef Full Checks (including integration)";
+    scriptChecks = relevantChecks // integrationChecks;
   };
 
 in
@@ -161,8 +180,15 @@ pkgs.writeShellScriptBin pname ''
 
   echo ""
 
-  # Run the actual relevant checks for this repository
-  ${relevantExecution}/bin/${pname}-execution "$@"
+  # Run the appropriate checks based on arguments
+  if [ "''${1:-}" = "--with-integration" ] || [ "''${1:-}" = "-i" ]; then
+    echo "🧪 Running checks with integration tests..."
+    shift  # Remove the flag from arguments
+    ${fullExecution}/bin/${pname}-full "$@"
+  else
+    echo "📋 Running standard checks (use --with-integration for integration tests)..."
+    ${relevantExecution}/bin/${pname}-execution "$@"
+  fi
 
   echo ""
   echo "🎉 All checks completed!"

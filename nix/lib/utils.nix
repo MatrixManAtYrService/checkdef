@@ -63,20 +63,18 @@ let
             echo "[${checkName}] ${check.description}"
             echo "================================================"
 
-            # Start timing
-            start_time=$(date +%s%3N)
+            # Start timing (using Python for precise timing)
+            start_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
 
             # Execute the check script
             ${check.scriptContent}
 
             # Calculate and display timing
-            end_time=$(date +%s%3N)
-            duration_ms=$((end_time - start_time))
-            duration_s=$((duration_ms / 1000))
-            duration_ms_remainder=$((duration_ms % 1000))
+            end_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
+            duration=$(python3 -c "print(f'{float(\"$end_time\") - float(\"$start_time\"):.3f}s')")
 
             # If we get here, the check passed
-            echo "✅ ${check.description} - PASSED (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
+            echo "✅ ${check.description} - PASSED ($duration)"
           '')
           scriptChecks)
       );
@@ -114,8 +112,8 @@ let
               echo "[${checkName}] ${description}"
               echo "================================================"
 
-              # Start timing
-              start_time=$(date +%s%3N)
+              # Start timing (using Python for precise timing)
+              start_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
 
               # Create a temporary directory for the build result link
               temp_dir=$(mktemp -d)
@@ -145,24 +143,40 @@ let
               fi
 
               # Calculate timing
-              end_time=$(date +%s%3N)
-              duration_ms=$((end_time - start_time))
-              duration_s=$((duration_ms / 1000))
-              duration_ms_remainder=$((duration_ms % 1000))
+              end_time=$(python3 -c "import time; print(f'{time.time():.3f}')")
+              duration=$(python3 -c "print(f'{float(\"$end_time\") - float(\"$start_time\"):.3f}s')")
 
               if [ "$build_success" = "true" ]; then
+                # In verbose mode, show stored logs if available
+                if [ "$verbose" = "true" ]; then
+                  if [ -f "$result_link/build_logs.txt" ]; then
+                    echo "🔧 Stored build logs:"
+                    echo "----------------------------------------"
+                    cat "$result_link/build_logs.txt"
+                    echo "----------------------------------------"
+                  elif [ -f "$result_link/pytest_output.txt" ]; then
+                    echo "🔧 Stored pytest output:"
+                    echo "----------------------------------------"
+                    cat "$result_link/pytest_output.txt"
+                    echo "----------------------------------------"
+                  fi
+                fi
+
                 # Read the test summary from the build result if available
                 if [ -f "$result_link/pytest_summary.txt" ]; then
                   summary=$(cat "$result_link/pytest_summary.txt")
-                  echo "✅ ${checkName} - $summary (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
+                  echo "✅ ${checkName} - $summary ($duration)"
                 else
-                  echo "✅ ${checkName} - PASSED (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
+                  echo "✅ ${checkName} - PASSED ($duration)"
                 fi
               else
-                echo "❌ ${checkName} - FAILED (''${duration_s}.$(printf "%03d" $duration_ms_remainder)s)"
-                # Clean up temp directory before exit
-                rm -rf "$temp_dir"
-                exit 1
+                echo "❌ ${checkName} - FAILED ($duration)"
+                # Track failures but don't exit immediately
+                if [ -z "''${FAILED_CHECKS:-}" ]; then
+                  FAILED_CHECKS="${checkName}"
+                else
+                  FAILED_CHECKS="$FAILED_CHECKS,${checkName}"
+                fi
               fi
 
               # Clean up temp directory
@@ -192,10 +206,18 @@ let
       export verbose
       echo "🚀 running checklist: ${suiteName}"
 
+      # Initialize failed checks tracker
+      FAILED_CHECKS=""
+
       ${allCheckScripts}
 
       echo "================================================"
-      echo "🎉 All checks passed!"
+      if [ -z "$FAILED_CHECKS" ]; then
+        echo "🎉 All checks passed!"
+      else
+        echo "❌ Some checks failed: $FAILED_CHECKS"
+        exit 1
+      fi
     '';
 
   # Consumer-facing runner (no shellcheck validation)

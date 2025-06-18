@@ -92,13 +92,20 @@ in
 
             echo "🧪 Running pytest with flags: ${pytestFlags} ${builtins.concatStringsSep " " tests}"
 
-            # Run the tests and capture results
-            if pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} ${builtins.concatStringsSep " " finalTestConfig.pytestArgs}; then
+            # Set up a writable pytest cache directory to avoid permission errors
+            export PYTEST_CACHE_DIR="$TMPDIR/.pytest_cache"
+            mkdir -p "$PYTEST_CACHE_DIR"
+
+            # Run the tests and capture both stdout and stderr
+            mkdir -p $TMPDIR/pytest_logs
+
+            if pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} ${builtins.concatStringsSep " " finalTestConfig.pytestArgs} -o cache_dir="$PYTEST_CACHE_DIR" 2>&1 | tee $TMPDIR/pytest_logs/output.log; then
               echo "✅ All tests passed!"
               export PYTEST_RESULT="PASSED"
             else
               echo "❌ Some tests failed"
               export PYTEST_RESULT="FAILED"
+              # Still capture the logs even on failure
               exit 1
             fi
 
@@ -115,6 +122,15 @@ in
 
             # Store the command that was run for reference
             echo "pytest ${pytestFlags} ${builtins.concatStringsSep " " tests} ${builtins.concatStringsSep " " finalTestConfig.pytestArgs}" > $out/pytest_command.txt
+
+            # Store the captured logs for verbose mode display
+            if [ -f "$TMPDIR/pytest_logs/output.log" ]; then
+              cp "$TMPDIR/pytest_logs/output.log" "$out/build_logs.txt"
+              echo "Stored pytest logs in build_logs.txt ($(wc -l < "$out/build_logs.txt") lines)"
+            else
+              echo "No pytest logs found to store"
+              echo "No pytest logs captured" > "$out/build_logs.txt"
+            fi
 
             runHook postInstall
           '';

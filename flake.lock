@@ -19,6 +19,22 @@
         "type": "github"
       }
     },
+    "checkdef-demo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1750270820,
+        "narHash": "sha256-ovJOafx5medjg/RzjX86I9BD7FT0FeWX0D9oBvEegpo=",
+        "owner": "MatrixManAtYrService",
+        "repo": "checkdef-demo",
+        "rev": "8f919a4f3a1d4a4739e2993bfd90cad8acd748c4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "MatrixManAtYrService",
+        "repo": "checkdef-demo",
+        "type": "github"
+      }
+    },
     "globset": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib"
@@ -71,6 +87,7 @@
     "root": {
       "inputs": {
         "blueprint": "blueprint",
+        "checkdef-demo": "checkdef-demo",
         "globset": "globset"
       }
     },
