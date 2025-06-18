@@ -97,11 +97,6 @@ let
                 else derivation;
 
               # Extract command information if available
-              normalCommand =
-                if builtins.hasAttr "meta" derivation && builtins.hasAttr "command" derivation.meta
-                then derivation.meta.command
-                else "";
-
               verboseCommand =
                 if builtins.hasAttr "meta" verboseDerivation && builtins.hasAttr "command" verboseDerivation.meta
                 then verboseDerivation.meta.command
@@ -132,9 +127,7 @@ let
                 fi
               else
                 target_derivation="${derivation}"
-                # Show the underlying command if available
-                ${if normalCommand != "" then ''echo "🔧 Underlying command: ${normalCommand}"'' else ""}
-                echo "🔧 Nix build command: nix build \"$target_derivation\" --out-link \"$result_link\""
+                # In non-verbose mode, don't show command details
                 if nix build "$target_derivation" --out-link "$result_link" 2>/dev/null; then
                   build_success=true
                 else
@@ -162,12 +155,55 @@ let
                   fi
                 fi
 
+                # For derivation-based checks, show dual timing if this is a cached result
+                # Create a cache directory for storing original build times
+                cache_dir="''${HOME:-/tmp}/.checkdef-cache"
+                mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp/.checkdef-cache-$USER"
+                mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
+                
+                # Create a hash of the derivation path for the cache key
+                derivation_hash=$(echo "$target_derivation" | sha256sum | cut -d' ' -f1 | head -c 16)
+                timing_cache_file="$cache_dir/timing-$derivation_hash.txt"
+                
+                # Determine if this was a cache hit (quick) or fresh build (slow)
+                duration_seconds=$(echo "$duration" | sed 's/s$//')
+                is_cached=false
+                
+                # Check if we have a previous timing record for comparison
+                if [ -f "$timing_cache_file" ]; then
+                  previous_duration=$(cat "$timing_cache_file" 2>/dev/null || echo "0.1s")
+                  previous_seconds=$(echo "$previous_duration" | sed 's/s$//')
+                  
+                  # If current build is significantly faster than previous (less than 80%), it's cached
+                  # OR if build took less than 1 second, it's likely cached
+                  if python3 -c "
+import sys
+current = float(\"$duration_seconds\")
+previous = float(\"$previous_seconds\")
+# Cached if current < 1s OR current is less than 80% of previous time
+is_cached = current < 1.0 or (previous > 0 and current < previous * 0.8)
+sys.exit(0 if is_cached else 1)
+" 2>/dev/null; then
+                    is_cached=true
+                  fi
+                fi
+                
+                if [ "$is_cached" = "true" ] && [ -f "$timing_cache_file" ]; then
+                  # This is a cached result, show both original and reference timing
+                  original_duration=$(cat "$timing_cache_file" 2>/dev/null || echo "unknown")
+                  timing_display="(original: $original_duration reference: $duration)"
+                else
+                  # This is a fresh build, store the timing for future reference
+                  echo "$duration" > "$timing_cache_file" 2>/dev/null || true
+                  timing_display="($duration)"
+                fi
+
                 # Read the test summary from the build result if available
                 if [ -f "$result_link/pytest_summary.txt" ]; then
                   summary=$(cat "$result_link/pytest_summary.txt")
-                  echo "✅ ${checkName} - $summary ($duration)"
+                  echo "✅ ${checkName} - $summary $timing_display"
                 else
-                  echo "✅ ${checkName} - PASSED ($duration)"
+                  echo "✅ ${checkName} - PASSED $timing_display"
                 fi
               else
                 echo "❌ ${checkName} - FAILED ($duration)"
@@ -204,7 +240,6 @@ let
       done
 
       export verbose
-      echo "🚀 running checklist: ${suiteName}"
 
       # Initialize failed checks tracker
       FAILED_CHECKS=""

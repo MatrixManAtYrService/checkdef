@@ -106,8 +106,6 @@ pkgs.writeShellScriptBin pname ''
   temp_dir=$(mktemp -d)
   trap 'rm -rf "$temp_dir"' EXIT
 
-  echo "🚀 running checklist: Checkdef Self-Checks"
-
   # Script validation check
   echo "================================================"
   echo "[script-validation] Generated script validation (shellcheck)"

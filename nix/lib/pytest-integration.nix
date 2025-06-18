@@ -2,7 +2,6 @@
 pkgs:
 
 let
-  inherit (pkgs) lib;
 
   defaultEnvironment = {
     LANG = "en_US.UTF-8";

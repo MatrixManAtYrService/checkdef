@@ -153,3 +153,4 @@ The framework ensures the displayed command matches what actually runs.
 
 See [checkdef-demo](https://github.com/example/checkdef-demo) for a complete working example showing selective test caching with a 40-second → 20-second improvement when only half the code changes.
 
+# force rebuild
