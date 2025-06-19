@@ -82,6 +82,19 @@ let
     )
     allChecksForValidation;
 
+  # Also create validation scripts that test derivation-based checks
+  # This ensures we validate the derivationChecks code path in utils.nix
+  derivationValidationScripts = {
+    "derivation-syntax" = runner {
+      name = "${pname}-derivation-validation";
+      suiteName = "Checkdef Derivation-based Script Generation";
+      derivationChecks = {
+        # Create a dummy derivation to test the derivation-based code path
+        testDerivation = pkgs.writeText "test-derivation" "dummy content";
+      };
+    };
+  };
+
   # Build the execution scripts for relevant checks
   relevantExecution = runner {
     name = "${pname}-execution";
@@ -113,7 +126,7 @@ pkgs.writeShellScriptBin pname ''
   # Track overall validation status
   overall_validation_failed=false
 
-  # Validate each check individually
+  # Validate each check individually (both script-based and derivation-based)
   ${builtins.concatStringsSep "\n" (builtins.attrValues (builtins.mapAttrs (checkName: checkScript: ''
 
   echo "🔧 Validating ${checkName} script generation..."
@@ -128,8 +141,8 @@ pkgs.writeShellScriptBin pname ''
   else
     rm -f /tmp/${checkName}_build.log
 
-    # Validate the generated script
-    script_path="${checkScript}/bin/${pname}-${checkName}-validation"
+    # Validate the generated script - find the actual script name
+    script_path=$(find "${checkScript}/bin" -type f | head -1)
     check_failed=false
 
     # Check bash syntax
@@ -166,7 +179,7 @@ pkgs.writeShellScriptBin pname ''
       echo "❌ ${checkName} script validation - FAILED"
     fi
   fi
-  '') individualValidationScripts))}
+  '') (individualValidationScripts // derivationValidationScripts)))}
 
   # Show overall validation result
   if [ "$overall_validation_failed" = "true" ]; then
