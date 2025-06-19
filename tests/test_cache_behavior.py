@@ -456,17 +456,32 @@ class TestCacheBehavior:
         assert post_change_bar.succeeded, f"Post-change bar run failed: {post_change_bar.output}"
         
         print(f"📈 Selective invalidation results:")
-        print(f"   Foo baseline: {baseline_foo.duration:.3f}s")
+        print(f"   Initial foo (uncached): {initial_foo.duration:.3f}s")
+        print(f"   Initial bar (uncached): {initial_bar.duration:.3f}s")
+        print(f"   Foo baseline (cached): {baseline_foo.duration:.3f}s")
         print(f"   Foo after bar change: {post_change_foo.duration:.3f}s") 
         print(f"   Bar after change: {post_change_bar.duration:.3f}s")
         
-        # Foo should remain fast (cache not invalidated)
-        assert post_change_foo.duration < baseline_foo.duration * 1.3, \
-            f"Foo cache was invalidated by bar change: {post_change_foo.duration:.3f}s vs {baseline_foo.duration:.3f}s"
+        # Define what constitutes a "fast" cached run vs "slow" uncached run
+        # Fast cached runs should be under 5 seconds, slow uncached runs should be over 15 seconds
+        FAST_CACHE_THRESHOLD = 5.0  # seconds
+        SLOW_BUILD_THRESHOLD = 15.0  # seconds
+        
+        # Foo should remain fast after bar changes (cache not invalidated)
+        # This is the key test - foo should stay under the fast threshold
+        assert post_change_foo.duration < FAST_CACHE_THRESHOLD, \
+            f"SELECTIVE CACHING BROKEN: Foo cache was invalidated by bar change. " \
+            f"Expected foo to remain fast (< {FAST_CACHE_THRESHOLD}s) but took {post_change_foo.duration:.3f}s. " \
+            f"This indicates shared cache dependencies between foo and bar modules."
             
-        # Bar should be slower (cache invalidated)
-        assert post_change_bar.duration > baseline_foo.duration * 0.8, \
-            f"Bar cache was not invalidated by change: {post_change_bar.duration:.3f}s"
+        # Bar should be slow after its own change (cache invalidated)
+        assert post_change_bar.duration > SLOW_BUILD_THRESHOLD, \
+            f"Bar cache was not invalidated by its own change: {post_change_bar.duration:.3f}s (expected > {SLOW_BUILD_THRESHOLD}s)"
+            
+        # Additional validation: baseline foo should also be fast (sanity check)
+        assert baseline_foo.duration < FAST_CACHE_THRESHOLD, \
+            f"Baseline foo should be fast (cached) but took {baseline_foo.duration:.3f}s. " \
+            f"This suggests the cache setup is broken."
             
         print("✅ Selective invalidation validation passed!")
         

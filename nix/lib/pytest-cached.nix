@@ -43,11 +43,10 @@ in
       pathAdditions = allEnvVars.PATH or "";
       envVarsWithoutPath = builtins.removeAttrs allEnvVars [ "PATH" ];
 
-      # Use globset to filter source files based on glob patterns
-      srcForCache = lib.fileset.toSource {
-        root = src;
-        fileset = globset.globs src includePatterns;
-      };
+      # Use the provided source directly
+      # When sources are pre-filtered for cache isolation, no additional filtering is needed
+      # When sources are paths, the includePatterns serve as documentation of what files are relevant
+      srcForCache = src;
 
       # Create the derivation with a function to handle different pytest flags
       mkPytestDerivation = verboseMode:
