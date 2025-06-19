@@ -193,7 +193,7 @@ let
                   # Look for pytest timing pattern like "1 passed in 10.09s" and extract just the time
                   test_execution_time=''$(grep '[0-9]\+ passed in [0-9.]\+s' "''$result_link/build_logs.txt" 2>/dev/null | grep -o '[0-9.]\+s' | head -1)
                 fi
-                
+
                 if [ "''$is_cached" = "true" ] && [ -f "''$timing_cache_file" ]; then
                   # This is a cached result, show both original test time and reference build time
                   original_test_time=''$(cat "''$timing_cache_file" 2>/dev/null || echo "unknown")

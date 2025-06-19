@@ -25,11 +25,20 @@ in
         glob_args=""
         ${builtins.concatStringsSep "\n" (map (pattern: ''glob_args="$glob_args --glob '${pattern}'"'') filePatterns)}
 
-        # Use ripgrep to find files with trailing whitespace, then use sed to fix them
+        # Use ripgrep to find files with trailing whitespace
         if files_with_whitespace=$(eval "rg --files-with-matches --no-ignore $glob_args '[[:space:]]$'" 2>/dev/null) && [ -n "$files_with_whitespace" ]; then
-          echo "Found files with trailing whitespace, trimming..."
-          printf '%s\n' "$files_with_whitespace" | xargs -P4 -I {} ${pkgs.gnused}/bin/sed -i 's/[[:space:]]*$//' {}
-          echo "✅ Trailing whitespace trimmed"
+          # Check if we can write to the current directory (i.e., not in Nix store)
+          if [ -w "." ]; then
+            echo "Found files with trailing whitespace, trimming..."
+            printf '%s\n' "$files_with_whitespace" | xargs -P4 -I {} ${pkgs.gnused}/bin/sed -i 's/[[:space:]]*$//' {}
+            echo "✅ Trailing whitespace trimmed"
+          else
+            echo "❌ Found files with trailing whitespace (read-only environment, cannot fix):"
+            printf '%s\n' "$files_with_whitespace"
+            echo ""
+            echo "💡 Run this check in a writable directory to automatically fix trailing whitespace"
+            exit 1
+          fi
         else
           echo "✅ No trailing whitespace found"
         fi
@@ -44,11 +53,20 @@ in
         glob_args=""
         ${builtins.concatStringsSep "\n" (map (pattern: ''glob_args="$glob_args --glob '${pattern}'"'') filePatterns)}
 
-        # Use ripgrep to find files with trailing whitespace, then use sed to fix them
+        # Use ripgrep to find files with trailing whitespace
         if files_with_whitespace=$(eval "rg --files-with-matches --no-ignore $glob_args '[[:space:]]$'" 2>/dev/null) && [ -n "$files_with_whitespace" ]; then
-          printf '%s\n' "🔧 Found files with trailing whitespace, trimming..."
-          printf '%s\n' "$files_with_whitespace" | xargs -P4 -I {} ${pkgs.gnused}/bin/sed -i 's/[[:space:]]*$//' {}
-          echo "✅ Trailing whitespace trimmed"
+          # Check if we can write to the current directory (i.e., not in Nix store)
+          if [ -w "." ]; then
+            printf '%s\n' "🔧 Found files with trailing whitespace, trimming..."
+            printf '%s\n' "$files_with_whitespace" | xargs -P4 -I {} ${pkgs.gnused}/bin/sed -i 's/[[:space:]]*$//' {}
+            echo "✅ Trailing whitespace trimmed"
+          else
+            echo "❌ Found files with trailing whitespace (read-only environment, cannot fix):"
+            printf '%s\n' "$files_with_whitespace"
+            echo ""
+            echo "💡 Run this check in a writable directory to automatically fix trailing whitespace"
+            exit 1
+          fi
         else
           echo "✅ No trailing whitespace found"
         fi

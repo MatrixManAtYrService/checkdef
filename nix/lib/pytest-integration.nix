@@ -26,13 +26,13 @@ let
       command = ''
         cd ${src}
         export CHECKDEF_DEMO_PATH="${checkdefDemoEnvPath}"
-        ${pythonEnv}/bin/pytest tests/test_cache_behavior.py -v
+        ${pythonEnv}/bin/pytest tests/test_cache_behavior.py -v --disable-warnings -W ignore::pytest.PytestCacheWarning
       '';
 
       verboseCommand = ''
         cd ${src}
         export CHECKDEF_DEMO_PATH="${checkdefDemoEnvPath}"
-        ${pythonEnv}/bin/pytest tests/test_cache_behavior.py -v -s --tb=long
+        ${pythonEnv}/bin/pytest tests/test_cache_behavior.py -v -s --tb=long --disable-warnings -W ignore::pytest.PytestCacheWarning
       '';
 
       dependencies = [ pythonEnv pkgs.docker ];
