@@ -175,7 +175,7 @@ let
 
                                 # If current build is significantly faster than previous (less than 80%), it's cached
                                 # OR if build took less than 1 second, it's likely cached
-                                if python3 -c "
+                                if ${pkgs.python3}/bin/python3 -c "
               import sys
               current = float(\"''$duration_seconds\")
               previous = float(\"''$previous_seconds\")
@@ -187,15 +187,27 @@ let
                                 fi
                               fi
 
-                              if [ "''$is_cached" = "true" ] && [ -f "''$timing_cache_file" ]; then
-                                # This is a cached result, show both original and reference timing
-                                original_duration=''$(cat "''$timing_cache_file" 2>/dev/null || echo "unknown")
-                                timing_display="(original: ''$original_duration reference: ''$duration)"
-                              else
-                                # This is a fresh build, store the timing for future reference
-                                echo "''$duration" > "''$timing_cache_file" 2>/dev/null || true
-                                timing_display="(''$duration)"
-                              fi
+                                              # Try to extract actual test execution time from build logs
+                test_execution_time=""
+                if [ -f "''$result_link/build_logs.txt" ]; then
+                  # Look for pytest timing pattern like "1 passed in 10.09s" and extract just the time
+                  test_execution_time=''$(grep '[0-9]\+ passed in [0-9.]\+s' "''$result_link/build_logs.txt" 2>/dev/null | grep -o '[0-9.]\+s' | head -1)
+                fi
+                
+                if [ "''$is_cached" = "true" ] && [ -f "''$timing_cache_file" ]; then
+                  # This is a cached result, show both original test time and reference build time
+                  original_test_time=''$(cat "''$timing_cache_file" 2>/dev/null || echo "unknown")
+                  timing_display="(original: ''$original_test_time reference: ''$duration)"
+                else
+                  # This is a fresh build, store the test execution time for future reference
+                  if [ -n "''$test_execution_time" ]; then
+                    echo "''$test_execution_time" > "''$timing_cache_file" 2>/dev/null || true
+                    timing_display="(''$test_execution_time)"
+                  else
+                    echo "''$duration" > "''$timing_cache_file" 2>/dev/null || true
+                    timing_display="(''$duration)"
+                  fi
+                fi
 
                                                             # Read the test summary from the build result if available
                               if [ -f "''$result_link/pytest_summary.txt" ]; then
