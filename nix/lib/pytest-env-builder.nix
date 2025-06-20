@@ -1,5 +1,5 @@
 # pytest-env-builder check definition - eliminates redundant filtering
-{ ... }:
+_:
 pkgs:
 let
   inherit (pkgs) lib;
@@ -117,9 +117,6 @@ in
         lib.cleanSourceWith {
           inherit src;
           filter = path: type:
-            let
-              relPath = lib.removePrefix (toString src + "/") (toString path);
-            in
             # Always include directories for traversal
             type == "directory" ||
             # Include files matching patterns

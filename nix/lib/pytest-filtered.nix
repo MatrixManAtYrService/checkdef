@@ -1,5 +1,5 @@
 # pytest-filtered check definition - creates a derivation with automatic source filtering
-{ ... }:
+_:
 pkgs:
 let
   inherit (pkgs) lib;

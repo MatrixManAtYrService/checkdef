@@ -8,7 +8,7 @@ in
 {
   meta = {
     requiredArgs = [ "src" "pythonEnv" ];
-    optionalArgs = [ "name" "description" "testConfig" "includePatterns" "tests" "wheelPath" "wheelPathEnvVar" "extraDeps" ];
+    optionalArgs = [ "name" "description" "testConfig" "tests" "wheelPath" "wheelPathEnvVar" "extraDeps" ];
     needsPythonEnv = true;
     makesChanges = false;
     isDerivedCheck = true;
@@ -20,7 +20,6 @@ in
     , name ? "pytest-cached"
     , description ? "Cached Python tests"
     , testConfig ? { }
-    , includePatterns ? [ "src/**" "tests/**" ]
     , tests ? [ "tests" ]
     , wheelPath ? null
     , wheelPathEnvVar ? "WHEEL_PATH"
