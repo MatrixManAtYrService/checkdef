@@ -22,14 +22,17 @@
     "checkdef-demo": {
       "flake": false,
       "locked": {
-        "lastModified": 1750391271,
-        "narHash": "sha256-RbQFkQRY40V23TH6ELYOeW3TC7h+VIhWUf3Kf0DGri8=",
-        "path": "/Users/matt/src/checkdef-demo",
-        "type": "path"
+        "lastModified": 1750396730,
+        "narHash": "sha256-5Cv+SDAfRC9czXcEn4hKZQar0ddD9FrhI2nFypvvZ6s=",
+        "owner": "MatrixManAtYrService",
+        "repo": "checkdef-demo",
+        "rev": "d7b1f9102dc702c1f5efd64404405b3ebb0b515c",
+        "type": "github"
       },
       "original": {
-        "path": "/Users/matt/src/checkdef-demo",
-        "type": "path"
+        "owner": "MatrixManAtYrService",
+        "repo": "checkdef-demo",
+        "type": "github"
       }
     },
     "globset": {

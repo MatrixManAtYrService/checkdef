@@ -53,6 +53,7 @@ For more on this, and an idea of how to use it, see [checkdef-demo](https://gith
 
 Used properly, I think it could potentially save a lot of time and money.
 
+
 # Status
 
 It works, but there's a lot of ugliness here.
@@ -70,6 +71,7 @@ Here's the gist:
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     checkdef.url = "github:MatrixManAtYrService/checkdef";
+
   };
 
   outputs = { self, nixpkgs, checkdef, ... }:
@@ -77,66 +79,85 @@ Here's the gist:
       forAllSystems = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
     in
     {
-      packages = forAllSystems
-        (system:
-          let
-            # indicate your code
-            src = ./.;
+      packages = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          checks = checkdef.lib pkgs;
+          src = ./.;
 
-            # call checkdef.lib with nixpkgs to get the set of checks
-            checks = checkdef.lib nixpkgs.legacyPackages.${system};
+          buildEnv = filteredSrc:
+              ... # assemble your check environment here
+              # To rely on the cache when a check's inputs have not changed
+              # filteredSrc might be something less than the whole repo
 
-            # define a check runner for this set of checks
-            linters = checks.runner {
-              inherit src;
-              name = "linters";
-              includePatterns = [ "src/**" "test/**" ];
-              scriptChecks = {
-                ruffCheck = checks.ruff-check { inherit src; };
-                ruffFormat = checks.pyright { inherit src; };
+
+          # Script checks (fast, run on whole source)
+          ruffChecks = {
+            ruffCheck = checks.ruff-check { inherit src; };
+            ruffFormat = checks.ruff-format { inherit src; };
+          };
+
+          # Derivation checks with source filtering
+          # a change in ./integration_tests would not invalidate this cached check
+          unit-tests = checks.pytest-env-builder {
+            inherit src;
+            envBuilder = buildPythonEnv;  # Reuse the same builder
+            name = "unit-tests";
+            description = "Unit tests";
+            includePatterns = [
+              "src/**"
+              "tests/**"
+            ];
+            tests = [ "tests" ];
+            testConfig = {
+              extraEnvVars = {
+                PYTHONPATH = "src";
               };
             };
+          };
 
-            pythonEnv = ...; # assemble your language-specific dependencies here
-            # this example uses `pytest-cached` which needs a python environment
-            # you can add check definitions for any language ecosystem
-
-            # define separate checks for different things you care about
-            unit-tests = checks.pytest-cached {
-              inherit src pythonEnv;
-              name = "unit-tests";
-              description = "Unit tests";
-              includePatterns = [
-                "src/**"
-                "tests/**"
-              ];
-              tests = [ "tests" ];
-            };
-
-            integration-tests = checks.pytest-cached {
-              inherit src pythonEnv;
-              name = "integration-tests";
-              description = "Integration tests";
-              includePatterns = [
-                "src/**"
-                "integration_tests/**"
-              ];
-              tests = [ "integration_tests" ];
-            };
-
-            # assemble them in a runner
-            tests = checks.runner {
-              name = "tests";
-              derivationChecks = {
-                inherit unit-tests integration-tests;
+          # a change in ./tests would not invalidate this cached check
+          integration-tests = checks.pytest-env-builder {
+            inherit src;
+            envBuilder = buildPythonEnv;
+            name = "integration-tests";
+            description = "Integration tests";
+            includePatterns = [
+              "src/**"
+              "integration_tests/**"
+            ];
+            tests = [ "integration_tests" ];
+            testConfig = {
+              extraEnvVars = {
+                PYTHONPATH = "src";
               };
             };
+          };
 
-          in
-          {
-            # add the check runners as flake outputs
-            inherit linters tests;
-          });
+        in
+        {
+          # group the checks into checklists
+          # add a runner for each one
+          checklist-linters = checks.runner {
+            name = "linters";
+            scriptChecks = ruffChecks;
+          };
+
+          checklist-tests = checks.runner {
+            name = "tests";
+            derivationChecks = {
+              inherit unit-tests integration-tests;
+            };
+          };
+
+          checklist-all = checks.runner {
+            name = "all-checks";
+            scriptChecks = ruffChecks;
+            derivationChecks = {
+              inherit unit-tests integration-tests;
+            };
+          };
+        });
     };
 }
 ```
