@@ -21,8 +21,12 @@ RUN cd /workspace/checkdef-demo && \
 
 # Remove checkdef-demo input from checkdef (avoid circular dependency)
 RUN cd /workspace/checkdef && \
-    sed -i '/checkdef-demo\.url/d' flake.nix && \
-    sed -i '/checkdef-demo\.flake/d' flake.nix
+    sed -i '/checkdef-demo = {/,/};/d' flake.nix && \
+    sed -i 's/checkdef-demo,\s*//g' flake.nix && \
+    sed -i 's/,\s*checkdef-demo//g' flake.nix
+
+# Remove flake.lock files to force regeneration with correct paths
+RUN rm -f /workspace/checkdef-demo/flake.lock /workspace/checkdef/flake.lock
 
 # Validate flake syntax after modifications
 RUN cd /workspace/checkdef-demo && nix flake check --dry-run || true

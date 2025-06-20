@@ -5,7 +5,7 @@
     blueprint.url = "github:numtide/blueprint";
     globset.url = "github:pdtpartners/globset";
     checkdef-demo = {
-      url = "github:MatrixManAtYrService/checkdef-demo";
+      url = "path:/Users/matt/src/checkdef-demo";
       flake = false;
     };
   };

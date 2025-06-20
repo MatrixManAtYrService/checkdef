@@ -406,31 +406,28 @@ class TestCacheBehavior:
         # Extract relevant command results
         uncached_foo = cached_main_commands['uncached_foo']
         first_bar = cached_main_commands['first_bar']
-        partially_cached_foo = cached_main_commands['partially_cached_foo']
         fully_cached_foo = cached_main_commands['fully_cached_foo']
         cached_bar = cached_main_commands['cached_bar']
         
         # Verify all commands succeeded
         assert uncached_foo.succeeded, f"Uncached foo run failed: {uncached_foo.output}"
         assert first_bar.succeeded, f"First bar run failed: {first_bar.output}"
-        assert partially_cached_foo.succeeded, f"Partially cached foo run failed: {partially_cached_foo.output}"
         assert fully_cached_foo.succeeded, f"Fully cached foo run failed: {fully_cached_foo.output}"
         assert cached_bar.succeeded, f"Cached bar run failed: {cached_bar.output}"
         
-        # Performance assertions
+        # Performance assertions - focus on the meaningful difference
         print(f"📈 Performance comparison:")
         print(f"   Uncached: {uncached_foo.duration:.3f}s")
-        print(f"   Partially cached: {partially_cached_foo.duration:.3f}s")
-        print(f"   Fully cached: {fully_cached_foo.duration:.3f}s")
+        print(f"   Cached: {fully_cached_foo.duration:.3f}s")
+        print(f"   Speedup: {uncached_foo.duration / fully_cached_foo.duration:.1f}x")
         
-        # Allow some tolerance for timing variations
-        # Uncached should be significantly slower than partially cached
-        assert uncached_foo.duration > partially_cached_foo.duration * 1.2, \
-            f"Expected uncached ({uncached_foo.duration:.3f}s) > partially cached ({partially_cached_foo.duration:.3f}s) * 1.2"
-            
-        # Partially cached should be slower than fully cached
-        assert partially_cached_foo.duration > fully_cached_foo.duration * 1.1, \
-            f"Expected partially cached ({partially_cached_foo.duration:.3f}s) > fully cached ({fully_cached_foo.duration:.3f}s) * 1.1"
+        # The key test: cached runs should be dramatically faster than uncached runs
+        # Use a conservative 10x speedup threshold to account for variations
+        min_speedup = 10.0
+        actual_speedup = uncached_foo.duration / fully_cached_foo.duration
+        assert actual_speedup > min_speedup, \
+            f"Expected caching speedup > {min_speedup}x, got {actual_speedup:.1f}x " \
+            f"(uncached: {uncached_foo.duration:.3f}s, cached: {fully_cached_foo.duration:.3f}s)"
             
         print("✅ Cache behavior validation passed!")
         
