@@ -1,24 +1,36 @@
-# pytest-cached check definition - creates a derivation for caching
-{ inputs, ... }:
+# pytest-filtered check definition - creates a derivation with automatic source filtering
+{ ... }:
 pkgs:
 let
   inherit (pkgs) lib;
-
 in
 {
   meta = {
-    requiredArgs = [ "src" "pythonEnv" ];
+    requiredArgs = [ "src" "envBuilder" ];
     optionalArgs = [ "name" "description" "testConfig" "includePatterns" "tests" "wheelPath" "wheelPathEnvVar" "extraDeps" ];
-    needsPythonEnv = true;
+    needsPythonEnv = false; # We build our own env
     makesChanges = false;
     isDerivedCheck = true;
+    description = "Creates cached pytest derivations with automatic source filtering and environment building";
+
+    # Documentation for the new interface
+    envBuilder = {
+      description = "Function that takes filtered source and returns a Python environment";
+      example = "filteredSrc: uv2nix.lib.buildPythonEnv { src = filteredSrc; }";
+      note = "This function is called once per unique filter pattern, enabling efficient caching";
+    };
+    includePatterns = {
+      description = "Glob patterns for files to include in the test derivation for cache isolation";
+      example = [ "src/mymodule/**" "tests/test_mymodule.py" "pyproject.toml" ];
+      note = "Automatically includes common Python config files (pyproject.toml, uv.lock, etc.)";
+    };
   };
 
   pattern =
     { src
-    , pythonEnv
-    , name ? "pytest-cached"
-    , description ? "Cached Python tests"
+    , envBuilder
+    , name ? "pytest-filtered"
+    , description ? "Filtered Python tests"
     , testConfig ? { }
     , includePatterns ? [ "src/**" "tests/**" ]
     , tests ? [ "tests" ]
@@ -43,8 +55,79 @@ in
       pathAdditions = allEnvVars.PATH or "";
       envVarsWithoutPath = builtins.removeAttrs allEnvVars [ "PATH" ];
 
-      # Use the provided source directly
-      srcForCache = src;
+      # Source filtering using simple glob pattern matching
+      filterSource = patterns: src:
+        let
+          # Simple glob matching function
+          matchesGlob = pattern: path:
+            let
+              # Convert glob pattern to a simple check
+              # For now, use a simple approach that handles the most common cases
+              checkPattern = pat: str:
+                if pat == "**" then true  # ** matches everything
+                else if lib.hasSuffix "/**" pat then
+                # Pattern like "src/foo/**" - check if path starts with "src/foo/"
+                  let prefix = lib.removeSuffix "/**" pat;
+                  in lib.hasPrefix (prefix + "/") str || str == prefix
+                else if lib.hasPrefix "**/" pat then
+                # Pattern like "**/test_foo.py" - check if path ends with "/test_foo.py" or equals "test_foo.py"
+                  let suffix = lib.removePrefix "**/" pat;
+                  in lib.hasSuffix ("/" + suffix) str || str == suffix
+                else if lib.hasInfix "*" pat then
+                # Simple wildcard - for now just check if the non-wildcard parts match
+                # This is a simplified implementation
+                  let
+                    parts = lib.splitString "*" pat;
+                    checkParts = parts: str:
+                      if parts == [ ] then str == ""
+                      else if builtins.length parts == 1 then str == (builtins.head parts)
+                      else
+                        let
+                          firstPart = builtins.head parts;
+                          restParts = builtins.tail parts;
+                        in
+                        lib.hasPrefix firstPart str &&
+                        checkParts restParts (lib.removePrefix firstPart str);
+                  in
+                  checkParts parts str
+                else
+                # Exact match
+                  pat == str;
+            in
+            checkPattern pattern path;
+
+          # Check if path matches any pattern
+          matchesAnyPattern = path:
+            let
+              relPath = lib.removePrefix (toString src + "/") (toString path);
+              allPatterns = patterns ++ [
+                # Always include common Python config files
+                "pyproject.toml"
+                "setup.py"
+                "setup.cfg"
+                "uv.lock"
+                "poetry.lock"
+                "requirements.txt"
+                # Include src/__init__.py for package recognition
+                "src/__init__.py"
+              ];
+            in
+            lib.any (pattern: matchesGlob pattern relPath) allPatterns;
+        in
+        lib.cleanSourceWith {
+          inherit src;
+          filter = path: type:
+            # Always include directories for traversal
+            type == "directory" ||
+            # Include files matching patterns
+            matchesAnyPattern path;
+        };
+
+      # Apply filtering to create cache-isolated source
+      filteredSrc = filterSource includePatterns src;
+
+      # Build Python environment using the provided builder function
+      pythonEnv = envBuilder filteredSrc;
 
       # Create the derivation with a function to handle different pytest flags
       mkPytestDerivation = verboseMode:
@@ -57,7 +140,7 @@ in
         pkgs.stdenvNoCC.mkDerivation {
           pname = name;
           version = "1.0.0";
-          src = srcForCache;
+          src = filteredSrc;
 
           # Enable the check phase
           doCheck = true;
@@ -147,6 +230,8 @@ in
     normalDerivation // {
       passthru = {
         verbose = verboseDerivation;
+        # Expose the filtered source and environment for debugging
+        inherit filteredSrc pythonEnv;
       };
     };
 }

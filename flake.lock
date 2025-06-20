@@ -22,8 +22,8 @@
     "checkdef-demo": {
       "flake": false,
       "locked": {
-        "lastModified": 1750384389,
-        "narHash": "sha256-6dMXmE6DwSxit4blCc8eJXy5mkk9nXW+02GWxHFV1IA=",
+        "lastModified": 1750391271,
+        "narHash": "sha256-RbQFkQRY40V23TH6ELYOeW3TC7h+VIhWUf3Kf0DGri8=",
         "path": "/Users/matt/src/checkdef-demo",
         "type": "path"
       },
