@@ -9,20 +9,35 @@ in
 {
   meta = {
     requiredArgs = [ "src" "pythonEnv" ];
-    optionalArgs = [ "name" "description" "ignoreUndeclared" ];
+    optionalArgs = [ "name" "description" "ignoreUndeclared" "ignoreUnused" ];
     needsPythonEnv = true;
     makesChanges = false;
   };
 
-  pattern = { src, pythonEnv, name ? "fawltydeps", description ? "Python dependency analysis with FawltyDeps", ignoreUndeclared ? [ ] }:
+  pattern = { src, pythonEnv, name ? "fawltydeps", description ? "Python dependency analysis with FawltyDeps", ignoreUndeclared ? [ ], ignoreUnused ? [ ] }:
     let
       # Automatically ignore fawltydeps itself since it's never imported by analyzed code
-      allIgnoredDeps = ignoreUndeclared ++ [ "fawltydeps" ];
+      allIgnoredUndeclared = ignoreUndeclared ++ [ "fawltydeps" ];
+      allIgnoredUnused = ignoreUnused;
 
+<<<<<<< HEAD
       ignoreFlags =
         if allIgnoredDeps != [ ]
         then builtins.concatStringsSep " " (map (dep: "--ignore-undeclared ${dep}") allIgnoredDeps)
+=======
+      ignoreUndeclaredFlags =
+        if allIgnoredUndeclared != [ ]
+        then builtins.concatStringsSep " " (map (dep: "--ignore-undeclared ${dep}") allIgnoredUndeclared)
+>>>>>>> 9fb3efb (fawltydeps fix)
         else "";
+
+      ignoreUnusedFlags =
+        if allIgnoredUnused != [ ]
+        then builtins.concatStringsSep " " (map (dep: "--ignore-unused ${dep}") allIgnoredUnused)
+        else "";
+
+      allFlags = builtins.filter (flag: flag != "") [ ignoreUndeclaredFlags ignoreUnusedFlags ];
+      ignoreFlags = builtins.concatStringsSep " " allFlags;
 
       baseCommand = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""}";
       verboseCmd = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""} -v";
