@@ -18,7 +18,7 @@ in
     let
       # Automatically ignore fawltydeps itself since it's never imported by analyzed code
       allIgnoredUndeclared = ignoreUndeclared ++ [ "fawltydeps" ];
-      allIgnoredUnused = ignoreUnused;
+      allIgnoredUnused = ignoreUnused ++ [ "fawltydeps" ];
 
       ignoreUndeclaredFlags =
         if allIgnoredUndeclared != [ ]
