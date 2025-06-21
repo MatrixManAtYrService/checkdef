@@ -13,8 +13,6 @@ let
     ruff-format = (import ./ruff-format.nix) pkgs;
     pyright = (import ./pyright.nix) pkgs;
     fawltydeps = (import ./fawltydeps.nix) pkgs;
-    pytest-cached = (import ./pytest-cached.nix { inherit inputs; }) pkgs;
-    pytest-filtered = (import ./pytest-filtered.nix { inherit inputs; }) pkgs;
     pytest-env-builder = (import ./pytest-env-builder.nix { inherit inputs; }) pkgs;
     pdoc = (import ./pdoc.nix) pkgs;
     trim-whitespace = (import ./trim-whitespace.nix) pkgs;

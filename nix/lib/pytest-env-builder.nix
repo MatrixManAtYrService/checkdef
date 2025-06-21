@@ -136,7 +136,7 @@ in
           pytestFlags =
             if verboseMode
             then "-v -s --log-cli-level=DEBUG"
-            else "-v --tb=short";
+            else "-v -s --tb=short";
         in
         pkgs.stdenvNoCC.mkDerivation {
           pname = name;

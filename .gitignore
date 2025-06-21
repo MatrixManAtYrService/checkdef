@@ -23,3 +23,5 @@ result
 
 # Cache directories that might be created by tools
 .cache/
+
+**/__pycache__/

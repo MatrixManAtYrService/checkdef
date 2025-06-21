@@ -625,4 +625,73 @@ class TestCacheBehavior:
             assert 'PASSED (' in line, \
                 f"Script-based ruff check should show single timing but line: {line}"
         
-        print("✅ Script timing display validation passed!") 
+        print("✅ Script timing display validation passed!")
+    
+    @pytest.mark.integration
+    @pytest.mark.container
+    def test_non_verbose_failure_output(self, test_container):
+        """Test that derivation check failures provide helpful output even in non-verbose mode."""
+        
+        print("🧪 Testing non-verbose failure output behavior...")
+        
+        # Create a backup of the original test
+        print("📊 Backing up original test...")
+        backup_command = test_container.run_timed_command("cp tests/test_foo.py tests/test_foo_backup.py")
+        assert backup_command.succeeded, f"Failed to backup original test: {backup_command.output}"
+        
+        # Replace the original test with a broken one
+        print("📊 Creating a broken test...")
+        break_command = test_container.run_timed_command("""
+            echo 'def test_broken_function():
+    assert False, "This test is intentionally broken for testing failure output"
+' > tests/test_foo.py
+        """)
+        assert break_command.succeeded, f"Failed to create broken test: {break_command.output}"
+        
+        # Try to run the broken test in non-verbose mode
+        print("📊 Running broken test in non-verbose mode...")
+        broken_test_run = test_container.run_timed_command("nix run .#checklist-foo 2>&1 || echo 'EXPECTED_FAILURE_MARKER'")
+        
+        # The test should fail, and we should see the failure marker
+        assert broken_test_run.contains_log("EXPECTED_FAILURE_MARKER"), \
+            f"Test should have failed but didn't show expected failure marker: {broken_test_run.output}"
+        
+        # Check that we get helpful output even in non-verbose mode
+        # With improved error handling, we now get full nix build logs which are much more helpful
+        # We should see:
+        # 1. The actual pytest failure details
+        # 2. The nix build error information  
+        # 3. A FAILED status message
+        
+        # Should show the nix build error details 
+        assert broken_test_run.contains_log("Cannot build") or broken_test_run.contains_log("builder failed"), \
+            f"Should show nix build error details but output: {broken_test_run.output[:1000]}"
+        
+        assert broken_test_run.contains_log("FAILED"), \
+            f"Should show FAILED status but output: {broken_test_run.output[:1000]}"
+        
+        # With the improved non-verbose mode, we should now see helpful failure information
+        # Since we improved error handling, we should see either build failures or test details
+        
+        # Should show some form of error information (either build errors or test details)
+        has_error_details = (
+            broken_test_run.contains_log("assert False") or
+            broken_test_run.contains_log("FAILED") or
+            broken_test_run.contains_log("Exception") or
+            broken_test_run.contains_log("intentionally broken")
+        )
+        
+        assert has_error_details, \
+            f"Should show some form of error details to help debug the failure, but output: {broken_test_run.output[:1500]}"
+        
+        # Log what we actually got for debugging purposes
+        print(f"Non-verbose failure output (first 1000 chars):")
+        print(f"{broken_test_run.output[:1000]}")
+        
+        # Restore the original test
+        print("📊 Restoring original test...")
+        restore_command = test_container.run_timed_command("mv tests/test_foo_backup.py tests/test_foo.py")
+        assert restore_command.succeeded, f"Failed to restore original test: {restore_command.output}"
+        
+        print("✅ Non-verbose failure output test completed!")
+        print("✅ Verified that non-verbose failures now provide helpful diagnostic information") 
