@@ -21,7 +21,7 @@ in
 
       ignoreFlags =
         if allIgnoredDeps != [ ]
-        then builtins.concatStringsSep " " (map (dep: "--ignore-unused ${dep}") allIgnoredDeps)
+        then builtins.concatStringsSep " " (map (dep: "--ignore-undeclared ${dep}") allIgnoredDeps)
         else "";
 
       baseCommand = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""}";
