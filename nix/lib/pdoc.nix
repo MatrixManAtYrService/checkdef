@@ -8,13 +8,13 @@ let
 in
 {
   meta = {
-    requiredArgs = [ "src" "pythonEnv" ];
-    optionalArgs = [ "name" "description" "outputDir" "modulePath" ];
+    requiredArgs = [ "src" "pythonEnv" "modulePath" ];
+    optionalArgs = [ "name" "description" "outputDir" ];
     needsPythonEnv = true;
     makesChanges = true;
   };
 
-  pattern = { pythonEnv, name ? "pdoc", description ? "Generate API documentation with pdoc", outputDir ? "docs", modulePath ? "src/htutil", src, ... }:
+  pattern = { pythonEnv, name ? "pdoc", description ? "Generate API documentation with pdoc", outputDir ? "docs", modulePath, src, ... }:
     makeCheckWithDeps {
       inherit name description src;
       dependencies = [ pythonEnv ];
