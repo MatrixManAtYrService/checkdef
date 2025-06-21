@@ -20,15 +20,9 @@ in
       allIgnoredUndeclared = ignoreUndeclared ++ [ "fawltydeps" ];
       allIgnoredUnused = ignoreUnused;
 
-<<<<<<< HEAD
-      ignoreFlags =
-        if allIgnoredDeps != [ ]
-        then builtins.concatStringsSep " " (map (dep: "--ignore-undeclared ${dep}") allIgnoredDeps)
-=======
       ignoreUndeclaredFlags =
         if allIgnoredUndeclared != [ ]
         then builtins.concatStringsSep " " (map (dep: "--ignore-undeclared ${dep}") allIgnoredUndeclared)
->>>>>>> 9fb3efb (fawltydeps fix)
         else "";
 
       ignoreUnusedFlags =
