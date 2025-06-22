@@ -23,6 +23,9 @@ let
   # integration testing
   pytestIntegrationCheck = (import ../lib/pytest-integration.nix) pkgs;
 
+  # CI analysis testing
+  ciAnalysisCheck = (import ../lib/ci-analysis.nix) pkgs;
+
   # Dummy python environment for script generation validation
   dummyPythonEnv = pkgs.python3.withPackages (ps: [ ps.pip ]);
 
@@ -68,8 +71,16 @@ let
     };
   };
 
+  # CI Analysis checks (when checkdef-demo is available)
+  ciAnalysisChecks = pkgs.lib.optionalAttrs (builtins.pathExists inputs.checkdef-demo) {
+    ci-analysis = ciAnalysisCheck.pattern {
+      inherit src;
+      checkdefDemoPath = inputs.checkdef-demo;
+    };
+  };
+
   # ALL checks for validation - both relevant and irrelevant
-  allChecksForValidation = relevantChecks // validationOnlyChecks // integrationChecks;
+  allChecksForValidation = relevantChecks // validationOnlyChecks // integrationChecks // ciAnalysisChecks;
 
   # Build individual validation scripts for ALL checks
   individualValidationScripts = builtins.mapAttrs
@@ -107,6 +118,13 @@ let
     name = "${pname}-full";
     suiteName = "Checkdef Full Checks (including integration)";
     scriptChecks = relevantChecks // integrationChecks;
+  };
+
+  # Build the execution scripts for CI analysis
+  ciAnalysisExecution = runner {
+    name = "${pname}-ci-analysis";
+    suiteName = "Checkdef CI Cache Analysis";
+    scriptChecks = relevantChecks // ciAnalysisChecks;
   };
 
 in
@@ -195,8 +213,12 @@ pkgs.writeShellScriptBin pname ''
     echo "🧪 Running checks with integration tests..."
     shift  # Remove the flag from arguments
     ${fullExecution}/bin/${pname}-full "$@"
+  elif [ "''${1:-}" = "--with-ci-analysis" ] || [ "''${1:-}" = "-c" ]; then
+    echo "🔍 Running CI cache behavior analysis..."
+    shift  # Remove the flag from arguments
+    ${ciAnalysisExecution}/bin/${pname}-ci-analysis "$@"
   else
-    echo "📋 Running standard checks (use --with-integration for integration tests)..."
+    echo "📋 Running standard checks (use --with-integration for integration tests, --with-ci-analysis for CI cache analysis)..."
     ${relevantExecution}/bin/${pname}-execution "$@"
   fi
 

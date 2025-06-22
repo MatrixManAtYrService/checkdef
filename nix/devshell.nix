@@ -8,10 +8,12 @@ pkgs.mkShell {
     statix
     docker
     podman
+    github-cli  # gh command for CI analysis
   ];
 
   shellHook = ''
     echo "🔧 checkdef development environment"
-    echo "Available tools: uv, pytest, docker/podman"
+    echo "Available tools: uv, pytest, docker/podman, gh"
+    echo "💡 For CI analysis, authenticate with: gh auth login"
   '';
 }
